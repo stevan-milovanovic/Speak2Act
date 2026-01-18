@@ -1,129 +1,109 @@
 package rs.smobile.speak2act.ui
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import rs.smobile.speak2act.ui.theme.Speak2ActTheme
+import kotlin.math.max
+import kotlin.random.Random
 
-/**
- * Maximum amplitude value for 16-bit PCM audio
- * Most Android microphone recordings are PCM 16-bit
- * A signed 16-bit integer ranges from -32768 to 32767
- */
-private const val MAX_AMPLITUDE = 32768f
 
 @Composable
 fun Waveform(
-    amplitudes: SnapshotStateList<Int>,
-    recordingSession: Int
+    amplitudes: List<Float>,
+    modifier: Modifier = Modifier,
+    barWidth: Dp = 6.dp,
+    barSpacing: Dp = 3.dp,
+    barColor: Color = MaterialTheme.colorScheme.primary
 ) {
-    val contentColor = MaterialTheme.colorScheme.onPrimary
-    val animatables = remember(recordingSession) {
-        mutableStateListOf<Animatable<Float, AnimationVector1D>>()
-    }
-    LaunchedEffect(recordingSession) {
-        snapshotFlow { amplitudes.size }
-            .collect { size ->
-                while (animatables.size < size) {
-                    val index = animatables.size
-                    val normalized = (amplitudes[index] / MAX_AMPLITUDE).coerceIn(0f, 1f)
-                    val anim = Animatable(0f)
-                    animatables.add(anim)
-
-                    launch {
-                        delay(index * 30L)
-                        anim.animateTo(
-                            targetValue = normalized,
-                            animationSpec = tween()
-                        )
-                        anim.animateTo(
-                            targetValue = normalized * 0.95f,
-                            animationSpec = tween(
-                                durationMillis = 140,
-                                easing = LinearOutSlowInEasing
-                            )
-                        )
-                    }
-                }
-            }
+    val animatedAmps = amplitudes.map { amplitude ->
+        animateFloatAsState(
+            targetValue = amplitude.coerceIn(0f, 1f),
+            animationSpec = tween(
+                durationMillis = 120,
+                easing = LinearOutSlowInEasing
+            ),
+            label = "waveformBar"
+        ).value
     }
 
     Canvas(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(60.dp)
-            .background(MaterialTheme.colorScheme.primaryContainer)
+            .fillMaxHeight(0.95f)
     ) {
-        val lineWidth = 8.dp.toPx()
-        val spacing = 4.dp.toPx()
-        val maxHeight = size.height
+        val centerY = size.height / 2f
+        val maxBarHeight = size.height / 2f
 
-        val totalWidth = animatables.size * (lineWidth + spacing)
-        val startX = (size.width - totalWidth) / 2f
+        val barWidthPx = barWidth.toPx()
+        val barSpacingPx = barSpacing.toPx()
+        val barCount = max(1, (size.width / (barWidthPx + barSpacingPx)).toInt())
+        val visible = animatedAmps.takeLast(barCount)
 
-        animatables.forEachIndexed { index, anim ->
-            val height = anim.value * maxHeight
-            val x = startX + index * (lineWidth + spacing)
+        visible.forEachIndexed { index, amp ->
+            val x = index * (barWidthPx + barSpacingPx)
+            if (x > size.width) return@forEachIndexed
+            val barHeight = amp * maxBarHeight
             drawLine(
-                color = contentColor,
-                start = Offset(x, maxHeight),
-                end = Offset(x, maxHeight - height),
-                strokeWidth = lineWidth
+                color = barColor,
+                start = Offset(x, centerY - barHeight),
+                end = Offset(x, centerY + barHeight),
+                strokeWidth = barWidthPx,
+                cap = StrokeCap.Round
             )
         }
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
-fun WaveformAnimationPreview() {
-    val amplitudes = remember { mutableStateListOf<Int>() }
-    val maxSamples = 30        // total values
-    val durationMs = 15_000L   // 15 seconds
-    val intervalMs = durationMs / maxSamples
+private fun WaveformAnimationPreview() {
+    val barCount = 60
+    var values by remember { mutableStateOf(List(barCount) { 1f }) }
 
     LaunchedEffect(Unit) {
-        repeat(maxSamples) {
-            val newAmplitude = (Math.random() * MAX_AMPLITUDE).toInt()
-            amplitudes.add(newAmplitude)
-
-            if (amplitudes.size > maxSamples) {
-                amplitudes.removeAt(0)
-            }
-
-            delay(intervalMs)
+        while (true) {
+            delay(120)
+            val next = Random.nextFloat()
+            values = values
+                .drop(1)
+                .plus(next)
         }
     }
 
-    Speak2ActTheme {
-        Column(
-            modifier = Modifier
+    MaterialTheme {
+        Box(
+            Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.secondary),
-            verticalArrangement = Arrangement.Center
+                .background(Color.Red),
+            contentAlignment = Alignment.Center
         ) {
-            Waveform(amplitudes = amplitudes, recordingSession = 1)
+            Waveform(
+                amplitudes = values,
+                modifier = Modifier.padding(16.dp)
+            )
         }
     }
 }

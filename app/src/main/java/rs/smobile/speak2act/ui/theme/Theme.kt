@@ -11,28 +11,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 val DarkColors = darkColorScheme(
-    primary = PrimaryDark,
-    onPrimary = Color.Black,
-    secondary = SecondaryDark,
+    primary = BrandBlue,
+    onPrimary = Color.White,
+    secondary = BrandBlueSoft,
     onSecondary = Color.Black,
-    background = BackgroundDark,
-    onBackground = Color.White,
+    background = BackgroundDarkTop,
+    onBackground = TextPrimaryDark,
     surface = SurfaceDark,
-    onSurface = Color.White,
-    error = ErrorDark,
-    onError = Color.Black
+    onSurface = TextPrimaryDark,
+    error = Error,
+    onError = Color.White
 )
 
 val LightColors = lightColorScheme(
-    primary = PrimaryLight,
+    primary = BrandBlue,
     onPrimary = Color.White,
-    secondary = SecondaryLight,
+    secondary = BrandBlueSoft,
     onSecondary = Color.White,
-    background = BackgroundLight,
-    onBackground = Color.Black,
-    surface = SurfaceLight,
-    onSurface = Color.Black,
-    error = ErrorLight,
+    background = SurfaceLight,
+    onBackground = TextPrimaryLight,
+    surface = SurfaceLightElevated,
+    onSurface = TextPrimaryLight,
+    error = Error,
     onError = Color.White
 )
 
@@ -46,7 +46,18 @@ fun Speak2ActTheme(
     val colorScheme = when {
         dynamicColor -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            val dynamicScheme =
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            dynamicScheme.copy(
+                primary = dynamicScheme.primary,
+                secondary = dynamicScheme.secondary,
+                tertiary = dynamicScheme.tertiary,
+                error = dynamicScheme.error,
+                // 🔒 LOCK THESE
+                background = if (darkTheme) DarkColors.background else LightColors.background,
+                surface = if (darkTheme) DarkColors.surface else LightColors.surface,
+                surfaceVariant = if (darkTheme) DarkColors.surfaceVariant else LightColors.surfaceVariant
+            )
         }
 
         darkTheme -> DarkColors

@@ -1,22 +1,33 @@
-package rs.smobile.speak2act.audio
+package rs.smobile.speak2act.audio.data
 
 import android.content.Context
 import android.media.MediaRecorder
+import dagger.hilt.android.qualifiers.ApplicationContext
+import rs.smobile.speak2act.audio.domain.AudioRecorder
 import java.io.File
+import javax.inject.Inject
 
-
-class AudioRecorder(private val context: Context) {
+class AndroidAudioRecorder @Inject constructor(
+    @param:ApplicationContext private val context: Context
+) : AudioRecorder {
 
     private companion object {
         private const val FILE_NAME: String = "instruction_recording.m4a"
         private const val ENCODING_BIT_RATE = 128_000 //quality vs size
         private const val SAMPLING_RATE = 44_100 //standard for speech
+
+        /**
+         * Maximum amplitude value for 16-bit PCM audio
+         * Most Android microphone recordings are PCM 16-bit
+         * A signed 16-bit integer ranges from -32768 to 32767
+         */
+        private const val MAX_AMPLITUDE = 32768f
     }
 
     private var recorder: MediaRecorder? = null
     private lateinit var outputFile: File
 
-    fun start(): File {
+    override fun start() {
         outputFile = File(context.filesDir, FILE_NAME)
 
         recorder = MediaRecorder(context).apply {
@@ -29,20 +40,20 @@ class AudioRecorder(private val context: Context) {
             prepare()
             start()
         }
-
-        return outputFile
     }
 
-    fun stop() {
+    override fun stop(): File {
         recorder?.apply {
             stop()
             release()
         }
         recorder = null
+        return outputFile
     }
 
-    fun getAmplitude(): Int {
-        return recorder?.maxAmplitude ?: 0
+    override fun getAmplitude(): Float {
+        val amplitude = recorder?.maxAmplitude?.coerceAtLeast(0)?.toFloat() ?: 0f
+        return amplitude / MAX_AMPLITUDE
     }
 
 }

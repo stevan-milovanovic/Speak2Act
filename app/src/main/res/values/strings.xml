@@ -3,4 +3,14 @@
     <string name="start_audio_recording">Start Audio Recording</string>
     <string name="stop_audio_recording">Stop Audio Recording</string>
     <string name="microphone_permission_is_required">Microphone permission is required</string>
+    <string name="recording">Recording…</string>
+    <string name="time">%02d:%02d</string>
+    <string name="voice_intent_action">Voice ➔ Intent ➔ Action</string>
+    <string name="detected_transaction">Detected Transaction</string>
+    <string name="action">Type</string>
+    <string name="amount">Amount</string>
+    <string name="currency">Currency</string>
+    <string name="recipient">Recipient</string>
+    <string name="purpose">Purpose</string>
+    <string name="none">N/A</string>
 </resources>

@@ -2,6 +2,8 @@
 Android app that records speech and uses **Firebase AI Logic** (**Gemini**) to summarize spoken input into **structured transaction instructions**.
 It showcases how voice input and serverless AI can be combined to build intelligent, low-latency mobile experiences.
 
+<img src="speak2act-app-flow-diagram.png" width="3600" height="1881">
+
 ---
 
 ## Why this exists
@@ -33,12 +35,12 @@ This project exists as a **practical reference implementation** for Android deve
 
 ## How it works
 
-<img src="speak2act-demo.gif" width="271" height="605">
+<img src="speak2act.gif" width="292" height="605">
 
 ### Flow
 
 1. **User speaks** a natural-language command  
-   _“Send 10 euros to Marija for the pizza.”_
+   _“Request 10 francs from Marija for the taxi bill.”_
 
 2. **Audio is recorded** on the device  
    - Live waveform visualization
