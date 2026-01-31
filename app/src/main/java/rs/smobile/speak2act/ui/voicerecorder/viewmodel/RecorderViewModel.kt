@@ -1,4 +1,4 @@
-package rs.smobile.speak2act.viewmodel
+package rs.smobile.speak2act.ui.voicerecorder.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -30,7 +30,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonPrimitive
 import rs.smobile.speak2act.audio.domain.AudioRecorder
-import rs.smobile.speak2act.ui.VoiceRecorderUiState
+import rs.smobile.speak2act.ui.voicerecorder.VoiceRecorderUiState
 import javax.inject.Inject
 
 @HiltViewModel

@@ -1,4 +1,4 @@
-package rs.smobile.speak2act.ui.component
+package rs.smobile.speak2act.ui.voicerecorder.component
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon

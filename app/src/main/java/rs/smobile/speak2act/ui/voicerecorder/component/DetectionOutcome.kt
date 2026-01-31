@@ -1,4 +1,4 @@
-package rs.smobile.speak2act.ui.component
+package rs.smobile.speak2act.ui.voicerecorder.component
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
@@ -21,7 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import rs.smobile.speak2act.R
-import rs.smobile.speak2act.ui.VoiceRecorderUiState
+import rs.smobile.speak2act.ui.voicerecorder.VoiceRecorderUiState
 
 
 @Composable

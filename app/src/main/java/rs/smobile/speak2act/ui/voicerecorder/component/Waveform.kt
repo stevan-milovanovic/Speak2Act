@@ -1,4 +1,4 @@
-package rs.smobile.speak2act.ui
+package rs.smobile.speak2act.ui.voicerecorder.component
 
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState

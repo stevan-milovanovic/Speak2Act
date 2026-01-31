@@ -1,4 +1,4 @@
-package rs.smobile.speak2act.ui
+package rs.smobile.speak2act.ui.voicerecorder
 
 import android.Manifest.permission.RECORD_AUDIO
 import android.content.Context
@@ -39,8 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.checkSelfPermission
 import kotlinx.coroutines.delay
 import rs.smobile.speak2act.R
-import rs.smobile.speak2act.ui.component.DetectionOutcome
-import rs.smobile.speak2act.ui.component.RecordButton
+import rs.smobile.speak2act.ui.voicerecorder.component.DetectionOutcome
+import rs.smobile.speak2act.ui.voicerecorder.component.RecordButton
+import rs.smobile.speak2act.ui.voicerecorder.component.Waveform
 import rs.smobile.speak2act.ui.theme.BackgroundDarkBottom
 import rs.smobile.speak2act.ui.theme.BackgroundDarkTop
 import rs.smobile.speak2act.ui.theme.BrandBlueSoft

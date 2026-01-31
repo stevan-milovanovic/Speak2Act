@@ -1,4 +1,4 @@
-package rs.smobile.speak2act.ui.component
+package rs.smobile.speak2act.ui.voicerecorder.component
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement

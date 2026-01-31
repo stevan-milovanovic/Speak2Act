@@ -1,4 +1,4 @@
-package rs.smobile.speak2act.ui
+package rs.smobile.speak2act.ui.voicerecorder
 
 sealed interface VoiceRecorderUiState {
     data object Initial : VoiceRecorderUiState

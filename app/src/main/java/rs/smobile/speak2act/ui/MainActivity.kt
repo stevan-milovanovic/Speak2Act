@@ -28,7 +28,8 @@ import rs.smobile.speak2act.R
 import rs.smobile.speak2act.ui.theme.BackgroundDarkBottom
 import rs.smobile.speak2act.ui.theme.BackgroundDarkTop
 import rs.smobile.speak2act.ui.theme.Speak2ActTheme
-import rs.smobile.speak2act.viewmodel.RecorderViewModel
+import rs.smobile.speak2act.ui.voicerecorder.VoiceRecorderScreen
+import rs.smobile.speak2act.ui.voicerecorder.viewmodel.RecorderViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
