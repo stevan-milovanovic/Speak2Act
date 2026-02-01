@@ -39,13 +39,14 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat.checkSelfPermission
 import kotlinx.coroutines.delay
 import rs.smobile.speak2act.R
-import rs.smobile.speak2act.ui.voicerecorder.component.DetectionOutcome
-import rs.smobile.speak2act.ui.voicerecorder.component.RecordButton
-import rs.smobile.speak2act.ui.voicerecorder.component.Waveform
+import rs.smobile.speak2act.domain.Transaction
 import rs.smobile.speak2act.ui.theme.BackgroundDarkBottom
 import rs.smobile.speak2act.ui.theme.BackgroundDarkTop
 import rs.smobile.speak2act.ui.theme.BrandBlueSoft
 import rs.smobile.speak2act.ui.theme.Speak2ActTheme
+import rs.smobile.speak2act.ui.voicerecorder.component.DetectionOutcome
+import rs.smobile.speak2act.ui.voicerecorder.component.RecordButton
+import rs.smobile.speak2act.ui.voicerecorder.component.Waveform
 
 @Composable
 fun VoiceRecorderScreen(
@@ -223,11 +224,13 @@ private fun SuccessPreview() {
             modifier = Modifier.background(backgroundGradient),
             innerPadding = PaddingValues(0.dp),
             uiState = VoiceRecorderUiState.Success(
-                action = "Send",
-                amount = 50.00,
-                currency = "euros",
-                person = "Maria",
-                description = "Dinner"
+                Transaction(
+                    action = "Send",
+                    amount = 50.00,
+                    currency = "euros",
+                    person = "Maria",
+                    description = "Dinner"
+                )
             ),
             isRecording = false,
             amplitudes = emptyList(),

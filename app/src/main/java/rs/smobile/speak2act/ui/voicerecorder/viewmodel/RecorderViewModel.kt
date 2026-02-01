@@ -8,17 +8,9 @@ import com.google.firebase.ai.Chat
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.Content
 import com.google.firebase.ai.type.FunctionCallPart
-import com.google.firebase.ai.type.FunctionDeclaration
 import com.google.firebase.ai.type.GenerativeBackend
-import com.google.firebase.ai.type.HarmBlockThreshold
-import com.google.firebase.ai.type.HarmCategory
-import com.google.firebase.ai.type.ResponseModality
-import com.google.firebase.ai.type.SafetySetting
-import com.google.firebase.ai.type.Schema
 import com.google.firebase.ai.type.TextPart
-import com.google.firebase.ai.type.Tool
 import com.google.firebase.ai.type.content
-import com.google.firebase.ai.type.generationConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -29,7 +21,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonPrimitive
+import rs.smobile.speak2act.ai.AiModels
+import rs.smobile.speak2act.ai.AiModels.ACTION_PARAM
+import rs.smobile.speak2act.ai.AiModels.AMOUNT_PARAM
+import rs.smobile.speak2act.ai.AiModels.CURRENCY_PARAM
+import rs.smobile.speak2act.ai.AiModels.DESCRIPTION_PARAM
+import rs.smobile.speak2act.ai.AiModels.EXECUTE_TRANSACTION_FUNCTION_NAME
+import rs.smobile.speak2act.ai.AiModels.PERSON_PARAM
 import rs.smobile.speak2act.audio.domain.AudioRecorder
+import rs.smobile.speak2act.domain.Transaction
 import rs.smobile.speak2act.ui.voicerecorder.VoiceRecorderUiState
 import javax.inject.Inject
 
@@ -40,13 +40,6 @@ class RecorderViewModel @Inject constructor(
 
     private companion object {
         private const val TAG = "RecorderViewModel"
-        private const val MODEL_NAME = "gemini-2.5-flash"
-        private const val EXECUTE_TRANSACTION_FUNCTION_NAME = "executeTransaction"
-        private const val ACTION_PARAM = "action"
-        private const val AMOUNT_PARAM = "amount"
-        private const val CURRENCY_PARAM = "currency"
-        private const val PERSON_PARAM = "person"
-        private const val DESCRIPTION_PARAM = "description"
     }
 
     private var contentBuilder = Content.Builder()
@@ -67,48 +60,16 @@ class RecorderViewModel @Inject constructor(
         val genAI = Firebase.ai(
             backend = GenerativeBackend.googleAI()
         )
-        val generativeModel = genAI.generativeModel(
-            modelName = MODEL_NAME,
-            generationConfig = generationConfig {
-                temperature = 0.2f
-                responseModalities = listOf(ResponseModality.TEXT)
-            },
-            safetySettings = listOf(
-                SafetySetting(
-                    HarmCategory.HATE_SPEECH,
-                    HarmBlockThreshold.MEDIUM_AND_ABOVE
-                ),
-                SafetySetting(
-                    HarmCategory.HARASSMENT,
-                    HarmBlockThreshold.MEDIUM_AND_ABOVE
-                )
-            ),
-            systemInstruction = content {
-                "You are a banking app. The user records an audio message in which he's saying what is the action, " +
-                        "e.g. pay, split, request the money. It defines the value in swiss francs and he specifies to whom he wants to " +
-                        "send the money, or to split the money with, or to request the money from. Optionally he can define the reason " +
-                        "for the transaction, like it's for a dinner or travel expenses. " +
-                        "Extract in bullet points: 1.action, 2.amount, 3.currency, 4.person(contact) and 5.description(reason)."
-            },
-            tools = listOf(
-                Tool.functionDeclarations(
-                    listOf(
-                        FunctionDeclaration(
-                            EXECUTE_TRANSACTION_FUNCTION_NAME,
-                            "Get the transaction payload.",
-                            mapOf(
-                                ACTION_PARAM to Schema.string("Pay, split or request the money."),
-                                AMOUNT_PARAM to Schema.string("Amount of the transaction. Should be double."),
-                                CURRENCY_PARAM to Schema.string("Currency of the transaction."),
-                                PERSON_PARAM to Schema.string("Contact to whom the transaction should be addressed to."),
-                                DESCRIPTION_PARAM to Schema.string("The reason for the transaction."),
-                            )
-                        )
-                    )
-                )
+        with(AiModels.SpeechToTransaction) {
+            val generativeModel = genAI.generativeModel(
+                modelName = name,
+                generationConfig = generationConfig,
+                safetySettings = safetySettings,
+                systemInstruction = content { systemInstruction },
+                tools = tools
             )
-        )
-        chat = generativeModel.startChat()
+            chat = generativeModel.startChat()
+        }
         contentBuilder.part(
             TextPart("Analyze the audio and extract transaction instructions")
         )
@@ -138,6 +99,12 @@ class RecorderViewModel @Inject constructor(
         audioRecorder.stop()
     }
 
+    fun clearData() {
+        _uiState.value = VoiceRecorderUiState.Initial
+        _amplitudes.value = emptyList()
+        _isRecording.value = false
+    }
+
     private fun sendPrompt(
         fileInBytes: ByteArray
     ) {
@@ -159,19 +126,8 @@ class RecorderViewModel @Inject constructor(
                 response.functionCalls.forEach { functionCall ->
                     when (val name = functionCall.name) {
                         EXECUTE_TRANSACTION_FUNCTION_NAME -> {
-                            // Handle the call to fetchWeather()
-                            val action = functionCall.extract(ACTION_PARAM)
-                            val amount = functionCall.extract(AMOUNT_PARAM)?.toDouble()
-                            val person = functionCall.extract(PERSON_PARAM)
-                            val currency = functionCall.extract(CURRENCY_PARAM)
-                            val description = functionCall.extract(DESCRIPTION_PARAM)
-
                             _uiState.value = VoiceRecorderUiState.Success(
-                                action,
-                                amount,
-                                currency,
-                                person,
-                                description
+                                transaction = functionCall.extractTransaction()
                             )
                         }
 
@@ -182,6 +138,15 @@ class RecorderViewModel @Inject constructor(
         }
     }
 
+}
+
+private fun FunctionCallPart.extractTransaction(): Transaction? {
+    val action = extract(ACTION_PARAM) ?: return null
+    val amount = extract(AMOUNT_PARAM)?.toDouble() ?: return null
+    val person = extract(PERSON_PARAM) ?: return null
+    val currency = extract(CURRENCY_PARAM) ?: return null
+    val description = extract(DESCRIPTION_PARAM) ?: return null
+    return Transaction(action, amount, person, currency, description)
 }
 
 private fun FunctionCallPart.extract(param: String): String? = args[param]?.jsonPrimitive?.content

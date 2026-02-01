@@ -67,15 +67,17 @@ fun DetectionOutcome(
                     )
                     HorizontalDivider()
                     Spacer(Modifier.size(16.dp))
-                    OutcomeText(R.string.action, uiState.action)
+                    OutcomeText(R.string.action, uiState.transaction?.action)
+                    uiState.transaction?.amount?.let { amount ->
+                        Spacer(Modifier.size(16.dp))
+                        OutcomeText(R.string.amount, stringResource(R.string.amount_format, amount))
+                    }
                     Spacer(Modifier.size(16.dp))
-                    OutcomeText(R.string.amount, uiState.amount.toString())
+                    OutcomeText(R.string.currency, uiState.transaction?.currency)
                     Spacer(Modifier.size(16.dp))
-                    OutcomeText(R.string.currency, uiState.currency)
+                    OutcomeText(R.string.recipient, uiState.transaction?.person)
                     Spacer(Modifier.size(16.dp))
-                    OutcomeText(R.string.recipient, uiState.person)
-                    Spacer(Modifier.size(16.dp))
-                    OutcomeText(R.string.purpose, uiState.description)
+                    OutcomeText(R.string.purpose, uiState.transaction?.description)
                     Spacer(Modifier.size(16.dp))
                 }
             }

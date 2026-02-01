@@ -13,4 +13,13 @@
     <string name="recipient">Recipient</string>
     <string name="purpose">Purpose</string>
     <string name="none">N/A</string>
+    <string name="amount_format">%.2f</string>
+    <string name="quantity">%1$dx</string>
+    <string name="bill_summary">Bill Summary</string>
+    <string name="total_amount">Total Amount</string>
+    <string name="choose_action">Choose Action</string>
+    <string name="speech_to_transaction">Speech To Transaction</string>
+    <string name="bill_analyser">Bill Analyser</string>
+    <string name="convert_voice_to_transaction_instruction">Convert voice to transaction instruction</string>
+    <string name="extract_items_from_bill_image">Extract items from bill image</string>
 </resources>

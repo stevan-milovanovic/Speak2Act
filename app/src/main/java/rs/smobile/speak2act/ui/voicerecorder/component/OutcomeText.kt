@@ -15,7 +15,8 @@ import rs.smobile.speak2act.R
 
 @Composable
 fun OutcomeText(
-    @StringRes titleResId: Int, text: String?
+    @StringRes titleResId: Int,
+    text: String?
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween
