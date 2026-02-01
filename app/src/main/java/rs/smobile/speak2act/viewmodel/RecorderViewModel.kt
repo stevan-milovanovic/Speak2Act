@@ -1,4 +1,4 @@
-package rs.smobile.speak2act.ui.voicerecorder.viewmodel
+package rs.smobile.speak2act.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.ViewModel

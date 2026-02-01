@@ -1,4 +1,4 @@
-package rs.smobile.speak2act.ui.billanalyzer
+package rs.smobile.speak2act.bill
 
 import android.util.Log
 import com.google.firebase.Firebase
@@ -18,17 +18,14 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import rs.smobile.speak2act.ai.AiModels
-import rs.smobile.speak2act.bill.Bill
-import rs.smobile.speak2act.bill.BillItem
 import javax.inject.Inject
 import javax.inject.Singleton
 
-
 @Singleton
-class BillAnalyzer @Inject constructor() {
+class MlKitBillOcrService @Inject constructor() : BillOcrService {
 
     private companion object {
-        private const val TAG = "BillAnalyzerViewModel"
+        private const val TAG = "MlKitBillOcrService"
         private const val ITEMS_KEY = "items"
     }
 
@@ -36,9 +33,9 @@ class BillAnalyzer @Inject constructor() {
     private val generativeModel: GenerativeModel
 
     private val jsonParser = Json {
-        ignoreUnknownKeys = true    //Prevents crashes if Gemini adds extra fields
-        coerceInputValues = true    //Helps if types are slightly off
-        isLenient = true            //Handles slightly malformed JSON
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        isLenient = true
         explicitNulls = false
         decodeEnumsCaseInsensitive = true
     }
@@ -56,7 +53,7 @@ class BillAnalyzer @Inject constructor() {
         }
     }
 
-    fun ocrOnDevice(image: InputImage): Flow<Bill?> = flow {
+    override fun ocrOnDevice(image: InputImage): Flow<Bill?> = flow {
         val ocrResult = recognizer.process(image).await()
         val bill = processRawResult(ocrResult.text)
         emit(bill)
