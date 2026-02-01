@@ -8,7 +8,7 @@ import com.google.firebase.ai.type.SafetySetting
 import com.google.firebase.ai.type.Tool
 import com.google.firebase.ai.type.generationConfig
 
-private const val MODEL_NAME = "gemini-2.5-flash-lite"
+private const val MODEL_NAME = "gemini-3-flash-preview"
 private val DEFAULT_GENERATION_CONFIG = generationConfig {
     temperature = 0.2f
     responseModalities = listOf(ResponseModality.TEXT)
