@@ -1,4 +1,13 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val replicateApiKey: String = localProps.getProperty("REPLICATE_API_KEY", "")
+val cloudinaryCloudName: String = localProps.getProperty("CLOUDINARY_CLOUD_NAME", "")
+val uploadTestImage: String = localProps.getProperty("UPLOAD_TEST_IMAGE", "")
+val actionFigureTestImage: String = localProps.getProperty("ACTION_FIGURE_TEST_IMAGE", "")
 
 plugins {
     alias(libs.plugins.android.application)
@@ -22,6 +31,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "REPLICATE_API_KEY", "\"$replicateApiKey\"")
+        buildConfigField("String", "UPLOAD_TEST_IMAGE", "\"$uploadTestImage\"")
+        buildConfigField("String", "ACTION_FIGURE_TEST_IMAGE", "\"$actionFigureTestImage\"")
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"$cloudinaryCloudName\"")
     }
 
     buildTypes {
@@ -44,6 +57,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -64,12 +78,18 @@ dependencies {
     // ML Kit Text Recognition
     implementation(libs.text.recognition)
     implementation(libs.kotlinx.coroutines.play.services)
+    // Cloudinary
+    implementation(libs.cloudinary.android)
     // Serialization
     implementation(libs.kotlinx.serialization.json)
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
+    // OkHttp
+    implementation(libs.okhttp)
+    // Coil for image loading in Compose
+    implementation(libs.coil.compose)
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

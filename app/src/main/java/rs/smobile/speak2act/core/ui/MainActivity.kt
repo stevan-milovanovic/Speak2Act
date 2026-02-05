@@ -1,5 +1,7 @@
 package rs.smobile.speak2act.core.ui
 
+import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -27,32 +29,37 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.mlkit.vision.common.InputImage
 import dagger.hilt.android.AndroidEntryPoint
 import rs.smobile.speak2act.R
-import rs.smobile.speak2act.feature.billanalyzer.ui.BillScreen
-import rs.smobile.speak2act.feature.intro.ActionSelectionScreen
 import rs.smobile.speak2act.core.theme.BackgroundDarkBottom
 import rs.smobile.speak2act.core.theme.BackgroundDarkTop
 import rs.smobile.speak2act.core.theme.Speak2ActTheme
-import rs.smobile.speak2act.feature.voicerecorder.ui.VoiceRecorderScreen
+import rs.smobile.speak2act.feature.actionfigure.ui.ActionFigureScreen
+import rs.smobile.speak2act.feature.actionfigure.ui.ActionFigureViewModel
 import rs.smobile.speak2act.feature.billanalyzer.ui.BillAnalyzerViewModel
+import rs.smobile.speak2act.feature.billanalyzer.ui.BillScreen
+import rs.smobile.speak2act.feature.intro.ActionSelectionScreen
 import rs.smobile.speak2act.feature.voicerecorder.ui.RecorderViewModel
+import rs.smobile.speak2act.feature.voicerecorder.ui.VoiceRecorderScreen
+import java.io.File
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private lateinit var recorderViewModel: RecorderViewModel
     private lateinit var billAnalyzerViewModel: BillAnalyzerViewModel
+    private lateinit var actionFigureViewModel: ActionFigureViewModel
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val pickImageLauncher =
+        val billImageLauncher =
             registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
                 uri?.let { imageUri ->
                     val image = InputImage.fromFilePath(this, imageUri)
@@ -60,13 +67,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+        val actionFigureImageLauncher =
+            registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+                uri?.let { imageUri ->
+                    actionFigureViewModel.uploadImage(copyPickerUriToCache(imageUri))
+                }
+            }
+
         setContent {
             recorderViewModel = hiltViewModel()
             billAnalyzerViewModel = hiltViewModel()
+            actionFigureViewModel = hiltViewModel()
             val uiState by recorderViewModel.uiState.collectAsStateWithLifecycle()
             val amplitudes by recorderViewModel.amplitudes.collectAsStateWithLifecycle()
             val isRecording by recorderViewModel.isRecording.collectAsStateWithLifecycle()
             val bill by billAnalyzerViewModel.bill.collectAsStateWithLifecycle()
+            val actionFigureUiState by actionFigureViewModel.uiState.collectAsStateWithLifecycle()
+            val imageUploadState by actionFigureViewModel.imageUploadState.collectAsStateWithLifecycle()
+            val actionFigureGenerationState by actionFigureViewModel.actionFigureGenerationState.collectAsStateWithLifecycle()
 
             val action = remember { mutableStateOf<Action?>(null) }
 
@@ -101,6 +119,7 @@ class MainActivity : ComponentActivity() {
                                         text = when (action.value) {
                                             Action.VOICE_TO_ACTION -> stringResource(R.string.voice_intent_action)
                                             Action.BILL_ANALYZER -> stringResource(R.string.bill_summary)
+                                            Action.ACTION_FIGURE -> stringResource(R.string.generate_action_figure)
                                             null -> stringResource(R.string.choose_action)
                                         },
                                         modifier = Modifier.padding(vertical = 24.dp),
@@ -135,7 +154,7 @@ class MainActivity : ComponentActivity() {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     if (bill == null) {
-                                        pickImageLauncher.launch("image/*")
+                                        billImageLauncher.launch("image/*")
                                         CircularProgressIndicator()
                                     }
                                     bill?.let {
@@ -147,9 +166,19 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            Action.ACTION_FIGURE -> ActionFigureScreen(
+                                innerPadding = innerPadding,
+                                uiState = actionFigureUiState,
+                                imageUploadState = imageUploadState,
+                                actionFigureGenerationState = actionFigureGenerationState,
+                                onPickImage = { actionFigureImageLauncher.launch("image/*") },
+                                onGenerate = { actionFigureViewModel.generate("imageUrl") }
+                            )
+
                             null -> ActionSelectionScreen(
                                 onSpeechClick = { action.value = Action.VOICE_TO_ACTION },
-                                onBillClick = { action.value = Action.BILL_ANALYZER }
+                                onBillClick = { action.value = Action.BILL_ANALYZER },
+                                onGenerateActionFigure = { action.value = Action.ACTION_FIGURE }
                             )
                         }
                     }
@@ -159,7 +188,21 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private fun Context.copyPickerUriToCache(uri: Uri): Uri {
+    val input = contentResolver.openInputStream(uri)
+        ?: throw IllegalStateException("Cannot open input stream")
+
+    val file = File(cacheDir, "picked_${System.currentTimeMillis()}.jpg")
+
+    file.outputStream().use { output ->
+        input.use { it.copyTo(output) }
+    }
+
+    return file.toUri()
+}
+
 private enum class Action {
     VOICE_TO_ACTION,
-    BILL_ANALYZER
+    BILL_ANALYZER,
+    ACTION_FIGURE
 }

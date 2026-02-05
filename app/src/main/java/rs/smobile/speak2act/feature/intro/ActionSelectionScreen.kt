@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +37,9 @@ import rs.smobile.speak2act.core.theme.Speak2ActTheme
 
 @Composable
 fun ActionSelectionScreen(
-    onSpeechClick: () -> Unit, onBillClick: () -> Unit
+    onSpeechClick: () -> Unit,
+    onBillClick: () -> Unit,
+    onGenerateActionFigure: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -63,6 +66,21 @@ fun ActionSelectionScreen(
                 icon = Icons.AutoMirrored.Filled.ReceiptLong,
                 gradient = listOf(Color(0xFF667EEA), Color(0xFF764BA2)),
                 onClick = onBillClick
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            ActionCard(
+                title = stringResource(R.string.generate_action_figure),
+                description = stringResource(R.string.pick_image_for_action_figure),
+                icon = Icons.Filled.Accessibility,
+                gradient = listOf(
+                    Color(0xFF667EEA),
+                    Color(0xFF764BA2),
+                    Color(0xFF4FACFE),
+                    Color(0xFF00F2FE)
+                ),
+                onClick = onGenerateActionFigure
             )
         }
     }
@@ -123,6 +141,10 @@ private fun ActionCard(
 @Composable
 private fun ActionSelectionScreenPreview() {
     Speak2ActTheme {
-        ActionSelectionScreen(onSpeechClick = {}) { }
+        ActionSelectionScreen(
+            onSpeechClick = {},
+            onBillClick = {},
+            onGenerateActionFigure = {}
+        )
     }
 }
