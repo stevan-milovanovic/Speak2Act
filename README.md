@@ -125,11 +125,36 @@ This project serves as a **practical reference** for Android developers explorin
 </tr>
 </table>
 
+ 
+---
+
+### 🧩 Action Figure — Generate collectible action-figure images
+
+This feature lets the app send a character image to a model (via the Replicate API) and receive a generated action-figure-style image (PNG) you can preview and save.
+
+Quick notes:
+- The feature uploads a selected image (via Cloudinary by default) and then requests a model prediction from Replicate using `black-forest-labs/flux-2-pro` (configurable in code).
+- Networking is implemented with Retrofit + kotlinx.serialization and uses an OkHttp client provided by DI.
+
+Setup:
+- Add your Replicate API key to `local.properties` as `REPLICATE_API_KEY`. The app's Gradle config exposes this as `BuildConfig.REPLICATE_API_KEY`.
+
+Usage (in-app):
+- Open the Action Figure flow, pick or upload an image, then tap Generate. The app shows progress and then displays the generated image when ready.
+
+Testing:
+- A basic unit test using MockWebServer is provided at `app/src/test/.../ReplicateActionFigureServiceTest.kt` to validate response parsing.
+
+<img src="action-figure.gif" width="292" height="605" />
+
 **Technologies**
 - ML Kit Text Recognition (on-device)  
 - Firebase AI Logic  
 - Gemini models (text understanding & reasoning)  
-- Jetpack Compose (UI rendering & animations)  
+- Jetpack Compose (UI rendering & animations)
+- Retrofit + kotlinx.serialization
+- Cloudinary SDK for image upload
+- Replicate API for image with prompt to image model usage
 
 ---
 
