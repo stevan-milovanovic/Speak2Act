@@ -172,7 +172,7 @@ class MainActivity : ComponentActivity() {
                                 imageUploadState = imageUploadState,
                                 actionFigureGenerationState = actionFigureGenerationState,
                                 onPickImage = { actionFigureImageLauncher.launch("image/*") },
-                                onGenerate = { actionFigureViewModel.generate("imageUrl") }
+                                onGenerate = actionFigureViewModel::generate
                             )
 
                             null -> ActionSelectionScreen(

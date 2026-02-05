@@ -2,83 +2,58 @@ package rs.smobile.speak2act.feature.actionfigure.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
-import rs.smobile.speak2act.feature.actionfigure.ActionFigureConstants
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import rs.smobile.speak2act.feature.actionfigure.domain.ActionFigureService
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 
 class ReplicateActionFigureService @Inject constructor(
-    private val apiKey: String
+    private val api: ReplicateApi
 ) : ActionFigureService {
 
-    private val client: OkHttpClient =
-        OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(2, TimeUnit.MINUTES)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .callTimeout(2, TimeUnit.MINUTES)
-            .build()
-
     override suspend fun generateActionFigure(imageUrl: String, prompt: String?): Result<String> =
-        withContext(
-            Dispatchers.IO
-        ) {
+        withContext(Dispatchers.IO) {
             try {
-                val bodyJson = JSONObject().apply {
-                    put("input", JSONObject().apply {
-                        put("prompt", prompt ?: DEFAULT_PROMPT)
-                        put("resolution", "1 MP")
-                        put("aspect_ratio", "9:16")
-                        put("input_images", JSONArray().apply { put(imageUrl) })
-                        put("output_format", "png")
-                        put("output_quality", 80)
-                        put("safety_tolerance", 2)
-                        put("prompt_upsampling", false)
-                    })
-                }
+                val request = ReplicateRequest(
+                    input = ReplicateInput(
+                        prompt = prompt ?: DEFAULT_PROMPT,
+                        resolution = "1 MP",
+                        aspectRatio = "9:16",
+                        inputImages = listOf(imageUrl),
+                        outputFormat = "png",
+                        outputQuality = 80,
+                        safetyTolerance = 2,
+                        promptUpsampling = false
+                    )
+                )
 
-                val mediaType = "application/json; charset=utf-8".toMediaType()
-                val requestBody = bodyJson.toString().toRequestBody(mediaType)
-
-                val baseUrl = ActionFigureConstants.REPLICATE_API_BASE_URL
                 val modelVendor = "black-forest-labs"
                 val model = "flux-2-pro"
-                val request = Request.Builder()
-                    .url("$baseUrl/models/$modelVendor/$model/predictions")
-                    .header("Authorization", "Bearer $apiKey")
-                    .header("Content-Type", "application/json")
-                    .header("Prefer", "wait")
-                    .post(requestBody).build()
+                val resp = api.createPrediction(modelVendor, model, request)
 
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        return@withContext Result.failure(Exception("${response.code}: ${response.message}"))
-                    }
-                    val respBody = response.body.string()
-                    val json = JSONObject(respBody)
-                    val output = when {
-                        json.has("output") -> {
-                            when (val out = json.get("output")) {
-                                is JSONArray -> out.optString(0, "")
-                                else -> out.toString()
-                            }
-                        }
+                val outputField: JsonElement? = resp.output
+                val outputUrl: String = try {
+                    when (outputField) {
+                        null -> ""
+                        is JsonArray -> if (outputField.isNotEmpty()) {
+                            val first = outputField[0]
+                            if (first is JsonPrimitive) first.content else first.toString()
+                                .trim('"')
+                        } else ""
 
-                        else -> ""
+                        is JsonPrimitive -> outputField.content
+                        else -> outputField.toString().trim('"')
                     }
+                } catch (_: Throwable) {
+                    ""
+                }
 
-                    if (output.isBlank()) {
-                        Result.failure(Exception("No output URL in response: $respBody"))
-                    } else {
-                        Result.success(output)
-                    }
+                if (outputUrl.isBlank()) {
+                    Result.failure(Exception("No output URL in response: $resp"))
+                } else {
+                    Result.success(outputUrl)
                 }
             } catch (t: Throwable) {
                 Result.failure(t)

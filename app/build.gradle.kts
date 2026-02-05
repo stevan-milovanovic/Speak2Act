@@ -88,10 +88,14 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     // OkHttp
     implementation(libs.okhttp)
+    // Retrofit + kotlinx serialization converter
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization)
     // Coil for image loading in Compose
     implementation(libs.coil.compose)
     // Test
     testImplementation(libs.junit)
+    testImplementation(libs.mockwebserver)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
