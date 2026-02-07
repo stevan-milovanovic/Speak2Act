@@ -18,7 +18,7 @@ import rs.smobile.speak2act.feature.actionfigure.data.ReplicateActionFigureServi
 import rs.smobile.speak2act.feature.actionfigure.data.ReplicateApi
 import rs.smobile.speak2act.feature.actionfigure.domain.ActionFigureService
 import rs.smobile.speak2act.feature.actionfigure.domain.ImageUploadService
-import javax.inject.Named
+import rs.smobile.speak2act.feature.actionfigure.di.ReplicateApiKey
 import javax.inject.Singleton
 
 @Module
@@ -26,12 +26,12 @@ import javax.inject.Singleton
 object ActionFigureModule {
 
     @Provides
-    @Named("replicate_api_key")
+    @ReplicateApiKey
     fun provideReplicateApiKey(): String = BuildConfig.REPLICATE_API_KEY
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(@Named("replicate_api_key") apiKey: String): OkHttpClient =
+    fun provideOkHttpClient(@ReplicateApiKey apiKey: String): OkHttpClient =
         OkHttpClient.Builder()
             .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(2, java.util.concurrent.TimeUnit.MINUTES)
