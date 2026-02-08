@@ -33,24 +33,25 @@ class ReplicateActionFigureServiceTest {
     @OptIn(ExperimentalSerializationApi::class)
     @Test
     fun `generateActionFigure parses output url`() = runBlocking {
-        val jsonResponse = """
-        {
-          "output": ["https://example.com/generated.png"]
-        }
-        """
+        val outputUrl = "https://example.com/generated.png"
+        val jsonResponse = "{ \"output\": [\"$outputUrl\"] }"
 
         server.enqueue(MockResponse().setResponseCode(200).setBody(jsonResponse))
 
         val client = OkHttpClient.Builder().build()
         val json = Json { ignoreUnknownKeys = true }
-        val retrofit = Retrofit.Builder().baseUrl(server.url("/")).client(client)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType())).build()
+        val converterFactory = json.asConverterFactory("application/json".toMediaType())
+        val retrofit = Retrofit.Builder()
+            .baseUrl(server.url("/"))
+            .client(client)
+            .addConverterFactory(converterFactory)
+            .build()
 
         val api = retrofit.create(ReplicateApi::class.java)
-        val service = ReplicateActionFigureService(api = api, apiKey = "test")
+        val service = ReplicateActionFigureService(api = api)
 
-        val result = service.generateActionFigure("https://example.com/input.png", null)
+        val result = service.generateActionFigure("https://test.com/input.png", null)
         assertEquals(true, result.isSuccess)
-        assertEquals("https://example.com/generated.png", result.getOrNull())
+        assertEquals(outputUrl, result.getOrNull())
     }
 }
