@@ -93,6 +93,8 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization)
     // Coil for image loading in Compose
     implementation(libs.coil.compose)
+    // Filament
+    implementation(libs.filament.utils.android)
     // Test
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

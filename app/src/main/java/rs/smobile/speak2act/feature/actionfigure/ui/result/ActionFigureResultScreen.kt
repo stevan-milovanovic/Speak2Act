@@ -40,7 +40,7 @@ private const val ANIMATION_DURATION = 20_000
 @Composable
 fun ActionFigureResultScreen(
     state: ActionFigureGenerationState,
-    onShareResults: () -> Unit = {}
+    onGenerateModel: () -> Unit = {}
 ) {
     val isSuccess by remember(state) { derivedStateOf { state is Success } }
     val alpha = remember { Animatable(if (state is Success) 0f else 1f) }
@@ -100,7 +100,7 @@ fun ActionFigureResultScreen(
         Spacer(Modifier.weight(1f))
 
         Button(
-            onClick = onShareResults,
+            onClick = onGenerateModel,
             enabled = state is Success,
             modifier = Modifier
                 .height(64.dp)

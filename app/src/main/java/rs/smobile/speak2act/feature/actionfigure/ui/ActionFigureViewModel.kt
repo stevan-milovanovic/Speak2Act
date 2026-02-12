@@ -71,4 +71,8 @@ class ActionFigureViewModel @Inject constructor(
             }
         }
     }
+
+    fun generateModel() {
+        _uiState.value = ActionFigureUiState.ActionFigureModel
+    }
 }

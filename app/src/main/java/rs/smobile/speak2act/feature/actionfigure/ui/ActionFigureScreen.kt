@@ -15,6 +15,7 @@ import rs.smobile.speak2act.core.theme.BackgroundDarkBottom
 import rs.smobile.speak2act.core.theme.BackgroundDarkTop
 import rs.smobile.speak2act.core.theme.Speak2ActTheme
 import rs.smobile.speak2act.feature.actionfigure.data.ImageUploadState
+import rs.smobile.speak2act.feature.actionfigure.ui.draft.ModelViewerScreen
 import rs.smobile.speak2act.feature.actionfigure.ui.result.ActionFigureGenerationState
 import rs.smobile.speak2act.feature.actionfigure.ui.result.ActionFigureResultScreen
 import rs.smobile.speak2act.feature.actionfigure.ui.upload.UploadAndSelectStyleScreen
@@ -26,8 +27,9 @@ fun ActionFigureScreen(
     uiState: ActionFigureUiState,
     imageUploadState: ImageUploadState?,
     actionFigureGenerationState: ActionFigureGenerationState,
-    onGenerate: () -> Unit,
     onPickImage: () -> Unit,
+    onGenerate: () -> Unit,
+    onGenerateModel: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -46,8 +48,11 @@ fun ActionFigureScreen(
             )
 
             ActionFigureUiState.ActionFigureImage -> ActionFigureResultScreen(
-                state = actionFigureGenerationState
+                state = actionFigureGenerationState,
+                onGenerateModel = onGenerateModel
             )
+
+            ActionFigureUiState.ActionFigureModel -> ModelViewerScreen("textured.glb")
         }
     }
 }
@@ -70,8 +75,9 @@ private fun ActionFigureScreenPreview() {
             uiState = ActionFigureUiState.PickImage,
             imageUploadState = null,
             actionFigureGenerationState = ActionFigureGenerationState.Initial(),
+            onPickImage = {},
             onGenerate = {},
-            onPickImage = {}
+            onGenerateModel = {}
         )
     }
 }

@@ -28,6 +28,7 @@
     <string name="upload_image">Upload Image &amp; Choose Style</string>
     <string name="pick_image_for_action_figure">Pick an image to create your own personalized action figure</string>
     <string name="generated_action_figure">Generated Action Figure</string>
+    <string name="generated_action_figure_model">Generated Action Figure Model</string>
     <string name="unknown_error_during_image_upload">Unknown error during image upload.</string>
     <string name="share_results">Share Results</string>
     <string name="select_a_photo_to_transform_into_an_action_figure">Select a photo to transform into an action figure</string>
