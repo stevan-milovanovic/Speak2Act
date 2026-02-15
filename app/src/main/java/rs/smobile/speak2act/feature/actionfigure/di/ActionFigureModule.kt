@@ -14,11 +14,14 @@ import retrofit2.Retrofit
 import rs.smobile.speak2act.BuildConfig
 import rs.smobile.speak2act.feature.actionfigure.ActionFigureConstants
 import rs.smobile.speak2act.feature.actionfigure.data.CloudinaryImageUploadService
+import rs.smobile.speak2act.feature.actionfigure.data.MeshyActionFigureModelService
+import rs.smobile.speak2act.feature.actionfigure.data.MeshyApi
 import rs.smobile.speak2act.feature.actionfigure.data.ReplicateActionFigureService
 import rs.smobile.speak2act.feature.actionfigure.data.ReplicateApi
+import rs.smobile.speak2act.feature.actionfigure.domain.ActionFigureModelService
 import rs.smobile.speak2act.feature.actionfigure.domain.ActionFigureService
 import rs.smobile.speak2act.feature.actionfigure.domain.ImageUploadService
-import rs.smobile.speak2act.feature.actionfigure.di.ReplicateApiKey
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -30,20 +33,22 @@ object ActionFigureModule {
     fun provideReplicateApiKey(): String = BuildConfig.REPLICATE_API_KEY
 
     @Provides
+    @ReplicateOkHttpClient
     @Singleton
-    fun provideOkHttpClient(@ReplicateApiKey apiKey: String): OkHttpClient =
+    fun provideReplicateOkHttpClient(@ReplicateApiKey apiKey: String): OkHttpClient =
         OkHttpClient.Builder()
-            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(2, java.util.concurrent.TimeUnit.MINUTES)
-            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .callTimeout(2, java.util.concurrent.TimeUnit.MINUTES)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(2, TimeUnit.MINUTES)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(2, TimeUnit.MINUTES)
             .addInterceptor { chain ->
                 val original = chain.request()
                 val newReq = original.newBuilder()
                     .header("Authorization", "Bearer $apiKey")
                     .header("Prefer", "wait")
                     .build()
-                chain.proceed(newReq)
+                val d = chain.proceed(newReq)
+                return@addInterceptor d
             }
             .build()
 
@@ -60,8 +65,12 @@ object ActionFigureModule {
 
     @OptIn(ExperimentalSerializationApi::class)
     @Provides
+    @ReplicateRetrofit
     @Singleton
-    fun provideRetrofit(factory: Converter.Factory, client: OkHttpClient): Retrofit =
+    fun provideRetrofit(
+        factory: Converter.Factory,
+        @ReplicateOkHttpClient client: OkHttpClient
+    ): Retrofit =
         Retrofit.Builder()
             .baseUrl(ActionFigureConstants.REPLICATE_API_BASE_URL)
             .client(client)
@@ -70,7 +79,7 @@ object ActionFigureModule {
 
     @Provides
     @Singleton
-    fun provideReplicateApi(retrofit: Retrofit): ReplicateApi =
+    fun provideReplicateApi(@ReplicateRetrofit retrofit: Retrofit): ReplicateApi =
         retrofit.create(ReplicateApi::class.java)
 
     @Provides
@@ -84,4 +93,52 @@ object ActionFigureModule {
     @Singleton
     fun provideImageUploadService(): ImageUploadService =
         CloudinaryImageUploadService()
+
+    @Provides
+    @MeshyApiKey
+    fun provideMeshyApiKey(): String = BuildConfig.MESHY_API_KEY
+
+    @Provides
+    @MeshyOkHttpClient
+    @Singleton
+    fun provideMeshyOkHttpClient(@MeshyApiKey apiKey: String): OkHttpClient =
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(2, TimeUnit.MINUTES)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(2, TimeUnit.MINUTES)
+            .addInterceptor { chain ->
+                val original = chain.request()
+                val newReq = original.newBuilder()
+                    .header("Authorization", "Bearer $apiKey")
+                    .build()
+                val d = chain.proceed(newReq)
+                return@addInterceptor d
+            }
+            .build()
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Provides
+    @MeshyRetrofit
+    @Singleton
+    fun provideMeshyRetrofit(
+        factory: Converter.Factory,
+        @MeshyOkHttpClient client: OkHttpClient
+    ): Retrofit =
+        Retrofit.Builder()
+            .baseUrl(ActionFigureConstants.MESHY_API_BASE_URL)
+            .client(client)
+            .addConverterFactory(factory)
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideMeshyApi(@MeshyRetrofit retrofit: Retrofit): MeshyApi =
+        retrofit.create(MeshyApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideActionFigureModelService(
+        meshyApi: MeshyApi
+    ): ActionFigureModelService = MeshyActionFigureModelService(meshyApi)
 }
