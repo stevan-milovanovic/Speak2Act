@@ -27,9 +27,10 @@ fun ActionFigureScreen(
     uiState: ActionFigureUiState,
     imageUploadState: ImageUploadState?,
     actionFigureGenerationState: ActionFigureGenerationState,
+    actionFigure3dModel: ByteArray?,
     onPickImage: () -> Unit,
     onGenerate: () -> Unit,
-    onGenerateModel: () -> Unit
+    onGenerateModel: (String) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -52,7 +53,10 @@ fun ActionFigureScreen(
                 onGenerateModel = onGenerateModel
             )
 
-            ActionFigureUiState.ActionFigureModel -> ModelViewerScreen("textured.glb")
+            ActionFigureUiState.ActionFigureModel -> ModelViewerScreen(
+                modelByteArray = actionFigure3dModel,
+                onOrder = {}
+            )
         }
     }
 }
@@ -75,6 +79,7 @@ private fun ActionFigureScreenPreview() {
             uiState = ActionFigureUiState.PickImage,
             imageUploadState = null,
             actionFigureGenerationState = ActionFigureGenerationState.Initial(),
+            actionFigure3dModel = byteArrayOf(),
             onPickImage = {},
             onGenerate = {},
             onGenerateModel = {}

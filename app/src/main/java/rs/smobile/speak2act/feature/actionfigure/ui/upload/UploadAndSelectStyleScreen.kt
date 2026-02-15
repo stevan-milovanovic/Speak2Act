@@ -65,8 +65,7 @@ fun UploadAndSelectStyleScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
                     .aspectRatio(9 / 16f)
-                    .alpha(progress / 100f)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .alpha(progress / 100f),
                 contentScale = ContentScale.Crop
             )
             when (state) {

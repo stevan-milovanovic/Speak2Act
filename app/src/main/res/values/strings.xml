@@ -24,6 +24,7 @@
     <string name="extract_items_from_bill_image">Extract items from bill image</string>
     <string name="error">Error: %1$s</string>
     <string name="generate_action_figure">Generate Action Figure</string>
+    <string name="order_action_figure">Order Action Figure</string>
     <string name="pick_image">Image ➔ Style ➔ Action Figure</string>
     <string name="upload_image">Upload Image &amp; Choose Style</string>
     <string name="pick_image_for_action_figure">Pick an image to create your own personalized action figure</string>

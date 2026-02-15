@@ -2,7 +2,6 @@ package rs.smobile.speak2act.feature.actionfigure.ui.result
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,12 +33,12 @@ import rs.smobile.speak2act.core.theme.Speak2ActTheme
 import rs.smobile.speak2act.feature.actionfigure.ui.result.ActionFigureGenerationState.Error
 import rs.smobile.speak2act.feature.actionfigure.ui.result.ActionFigureGenerationState.Success
 
-private const val ANIMATION_DURATION = 20_000
+private const val ANIMATION_DURATION = 10_000
 
 @Composable
 fun ActionFigureResultScreen(
     state: ActionFigureGenerationState,
-    onGenerateModel: () -> Unit = {}
+    onGenerateModel: (String) -> Unit
 ) {
     val isSuccess by remember(state) { derivedStateOf { state is Success } }
     val alpha = remember { Animatable(if (state is Success) 0f else 1f) }
@@ -66,6 +64,8 @@ fun ActionFigureResultScreen(
             .fillMaxSize()
             .padding(24.dp),
     ) {
+        val url = with(state) { if (this is Success) imageUrl else url }
+        if (url == null) return
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -78,8 +78,6 @@ fun ActionFigureResultScreen(
                 return
             }
 
-            val url = with(state) { if (this is Success) imageUrl else url }
-
             AsyncImage(
                 model = url,
                 contentDescription = stringResource(R.string.generated_action_figure),
@@ -87,7 +85,6 @@ fun ActionFigureResultScreen(
                     .fillMaxWidth()
                     .aspectRatio(9 / 16f)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.primary)
                     .graphicsLayer {
                         this.alpha = alpha.value
                         scaleX = scale.value
@@ -100,7 +97,7 @@ fun ActionFigureResultScreen(
         Spacer(Modifier.weight(1f))
 
         Button(
-            onClick = onGenerateModel,
+            onClick = { onGenerateModel(url) },
             enabled = state is Success,
             modifier = Modifier
                 .height(64.dp)
@@ -117,6 +114,6 @@ private fun ActionFigureResultScreenPreview() {
     Speak2ActTheme {
         ActionFigureResultScreen(
             state = Success(url = null, "dsa")
-        )
+        ) {}
     }
 }

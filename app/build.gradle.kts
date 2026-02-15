@@ -8,6 +8,7 @@ val replicateApiKey: String = localProps.getProperty("REPLICATE_API_KEY", "")
 val cloudinaryCloudName: String = localProps.getProperty("CLOUDINARY_CLOUD_NAME", "")
 val uploadTestImage: String = localProps.getProperty("UPLOAD_TEST_IMAGE", "")
 val actionFigureTestImage: String = localProps.getProperty("ACTION_FIGURE_TEST_IMAGE", "")
+val meshyApiKey: String = localProps.getProperty("MESHY_API_KEY", "")
 
 plugins {
     alias(libs.plugins.android.application)
@@ -35,6 +36,7 @@ android {
         buildConfigField("String", "UPLOAD_TEST_IMAGE", "\"$uploadTestImage\"")
         buildConfigField("String", "ACTION_FIGURE_TEST_IMAGE", "\"$actionFigureTestImage\"")
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"$cloudinaryCloudName\"")
+        buildConfigField("String", "MESHY_API_KEY", "\"$meshyApiKey\"")
     }
 
     buildTypes {

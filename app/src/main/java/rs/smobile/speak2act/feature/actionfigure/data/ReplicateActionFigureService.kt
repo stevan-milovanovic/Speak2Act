@@ -1,7 +1,5 @@
 package rs.smobile.speak2act.feature.actionfigure.data
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -14,50 +12,47 @@ class ReplicateActionFigureService @Inject constructor(
 ) : ActionFigureService {
 
     override suspend fun generateActionFigure(imageUrl: String, prompt: String?): Result<String> =
-        withContext(Dispatchers.IO) {
-            try {
-                val request = ReplicateRequest(
-                    input = ReplicateInput(
-                        prompt = prompt ?: DEFAULT_PROMPT,
-                        resolution = "1 MP",
-                        aspectRatio = "9:16",
-                        inputImages = listOf(imageUrl),
-                        outputFormat = "png",
-                        outputQuality = 80,
-                        safetyTolerance = 2,
-                        promptUpsampling = false
-                    )
+        try {
+            val request = ReplicateRequest(
+                input = ReplicateInput(
+                    prompt = prompt ?: DEFAULT_PROMPT,
+                    resolution = "1 MP",
+                    aspectRatio = "9:16",
+                    inputImages = listOf(imageUrl),
+                    outputFormat = "png",
+                    outputQuality = 80,
+                    safetyTolerance = 2,
+                    promptUpsampling = false
                 )
+            )
 
-                val modelVendor = "black-forest-labs"
-                val model = "flux-2-pro"
-                val resp = api.createPrediction(modelVendor, model, request)
+            val modelVendor = "black-forest-labs"
+            val model = "flux-2-pro"
+            val resp = api.createPrediction(modelVendor, model, request)
 
-                val outputField: JsonElement? = resp.output
-                val outputUrl: String = try {
-                    when (outputField) {
-                        null -> ""
-                        is JsonArray -> if (outputField.isNotEmpty()) {
-                            val first = outputField[0]
-                            if (first is JsonPrimitive) first.content else first.toString()
-                                .trim('"')
-                        } else ""
+            val outputField: JsonElement? = resp.output
+            val outputUrl: String = try {
+                when (outputField) {
+                    null -> ""
+                    is JsonArray -> if (outputField.isNotEmpty()) {
+                        val first = outputField[0]
+                        if (first is JsonPrimitive) first.content else first.toString().trim('"')
+                    } else ""
 
-                        is JsonPrimitive -> outputField.content
-                        else -> outputField.toString().trim('"')
-                    }
-                } catch (_: Throwable) {
-                    ""
+                    is JsonPrimitive -> outputField.content
+                    else -> outputField.toString().trim('"')
                 }
-
-                if (outputUrl.isBlank()) {
-                    Result.failure(Exception("No output URL in response: $resp"))
-                } else {
-                    Result.success(outputUrl)
-                }
-            } catch (t: Throwable) {
-                Result.failure(t)
+            } catch (_: Throwable) {
+                ""
             }
+
+            if (outputUrl.isBlank()) {
+                Result.failure(Exception("No output URL in response: $resp"))
+            } else {
+                Result.success(outputUrl)
+            }
+        } catch (t: Throwable) {
+            Result.failure(t)
         }
 }
 

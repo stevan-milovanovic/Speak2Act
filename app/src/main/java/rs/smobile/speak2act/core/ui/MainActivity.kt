@@ -38,6 +38,7 @@ import rs.smobile.speak2act.R
 import rs.smobile.speak2act.core.theme.BackgroundDarkBottom
 import rs.smobile.speak2act.core.theme.BackgroundDarkTop
 import rs.smobile.speak2act.core.theme.Speak2ActTheme
+import rs.smobile.speak2act.feature.actionfigure.ui.ActionFigure3DViewModel
 import rs.smobile.speak2act.feature.actionfigure.ui.ActionFigureScreen
 import rs.smobile.speak2act.feature.actionfigure.ui.ActionFigureViewModel
 import rs.smobile.speak2act.feature.billanalyzer.ui.BillAnalyzerViewModel
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var recorderViewModel: RecorderViewModel
     private lateinit var billAnalyzerViewModel: BillAnalyzerViewModel
     private lateinit var actionFigureViewModel: ActionFigureViewModel
+    private lateinit var actionFigure3DViewModel: ActionFigure3DViewModel
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +80,7 @@ class MainActivity : ComponentActivity() {
             recorderViewModel = hiltViewModel()
             billAnalyzerViewModel = hiltViewModel()
             actionFigureViewModel = hiltViewModel()
+            actionFigure3DViewModel = hiltViewModel()
             val uiState by recorderViewModel.uiState.collectAsStateWithLifecycle()
             val amplitudes by recorderViewModel.amplitudes.collectAsStateWithLifecycle()
             val isRecording by recorderViewModel.isRecording.collectAsStateWithLifecycle()
@@ -85,6 +88,7 @@ class MainActivity : ComponentActivity() {
             val actionFigureUiState by actionFigureViewModel.uiState.collectAsStateWithLifecycle()
             val imageUploadState by actionFigureViewModel.imageUploadState.collectAsStateWithLifecycle()
             val actionFigureGenerationState by actionFigureViewModel.actionFigureGenerationState.collectAsStateWithLifecycle()
+            val actionFigure3dModel by actionFigure3DViewModel.uiState.collectAsStateWithLifecycle()
 
             val action = remember { mutableStateOf<Action?>(null) }
 
@@ -171,9 +175,13 @@ class MainActivity : ComponentActivity() {
                                 uiState = actionFigureUiState,
                                 imageUploadState = imageUploadState,
                                 actionFigureGenerationState = actionFigureGenerationState,
+                                actionFigure3dModel = actionFigure3dModel,
                                 onPickImage = { actionFigureImageLauncher.launch("image/*") },
                                 onGenerate = actionFigureViewModel::generate,
-                                onGenerateModel = actionFigureViewModel::generateModel
+                                onGenerateModel = { imageUrl ->
+                                    actionFigureViewModel.generateModel()
+                                    actionFigure3DViewModel.create3DModel(imageUrl)
+                                }
                             )
 
                             null -> ActionSelectionScreen(
