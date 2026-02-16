@@ -33,6 +33,17 @@ class ActionFigure3DViewModel @Inject constructor(
         }
     }
 
+    fun createTextured3DModel(imageUrl: String) {
+        viewModelScope.launch {
+            val response = actionFigureModelService.generateActionFigure3DModel(imageUrl)
+            response.getOrNull()?.let { taskId ->
+                val modelDownloadUrl = pollTask(taskId)
+                val download = actionFigureModelService.downloadActionFigureModel(modelDownloadUrl)
+                download.getOrNull()?.let { _uiState.value = it }
+            }
+        }
+    }
+
     private suspend fun pollTask(taskId: String): String {
         while (true) {
             val response = actionFigureModelService.fetchActionFigure3DModelTaskStatus(taskId)

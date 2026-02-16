@@ -29,8 +29,12 @@ class FakeActionFigureModelService @Inject constructor(
         }
     }
 
+    private var downloadActionCallCount = 0
+
     override suspend fun downloadActionFigureModel(url: String): Result<ByteArray> {
-        val byteArray = context.assets.open("sample.glb").use { inputStream ->
+        downloadActionCallCount++
+        val fileName = if (downloadActionCallCount == 1) "sample.glb" else "textured.glb"
+        val byteArray = context.assets.open(fileName).use { inputStream ->
             inputStream.readBytes()
         }
 

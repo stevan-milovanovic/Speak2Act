@@ -183,6 +183,9 @@ class MainActivity : ComponentActivity() {
                                 onGenerateModel = { imageUrl ->
                                     actionFigureViewModel.generateModel()
                                     actionFigure3DViewModel.create3DModel(imageUrl)
+                                },
+                                onOrder = {
+                                    actionFigure3DViewModel.createTextured3DModel("")
                                 }
                             )
 

@@ -17,11 +17,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -49,6 +51,7 @@ fun ModelViewerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var modelViewer by remember { mutableStateOf<ModelViewer?>(null) }
+    var lastModelHash by remember { mutableStateOf<Int?>(null) }
 
     DisposableEffect(lifecycleOwner) {
         val choreographer = Choreographer.getInstance()
@@ -108,10 +111,18 @@ fun ModelViewerScreen(
                     factory = {
                         val surfaceView = FilamentSurfaceView(context)
                         val mv = ModelViewer(surfaceView)
+                        lastModelHash = modelByteArray.contentHashCode()
                         mv.loadActionFigureModel(context, modelByteArray)
                         modelViewer = mv
                         surfaceView.setOnTouchListener(mv.provideTouchListener(context))
                         surfaceView
+                    },
+                    update = { _ ->
+                        val newHash = modelByteArray.contentHashCode()
+                        if (newHash != lastModelHash) {
+                            modelViewer?.loadActionFigureModel(context, modelByteArray)
+                            lastModelHash = newHash
+                        }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -122,14 +133,19 @@ fun ModelViewerScreen(
         }
 
         Spacer(Modifier.weight(1f))
-
+        val buttonTitleResId = remember { mutableIntStateOf(R.string.paint_action_figure) }
         Button(
-            onClick = onOrder,
+            onClick = {
+                buttonTitleResId.intValue = R.string.order_action_figure
+                onOrder()
+            },
+            enabled = modelByteArray != null,
             modifier = Modifier
                 .height(64.dp)
                 .fillMaxWidth()
+                .alpha(if (modelByteArray != null) 1f else 0f)
         ) {
-            Text(stringResource(R.string.order_action_figure))
+            Text(stringResource(buttonTitleResId.intValue))
         }
     }
 }

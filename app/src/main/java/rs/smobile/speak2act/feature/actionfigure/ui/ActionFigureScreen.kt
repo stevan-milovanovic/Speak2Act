@@ -31,7 +31,8 @@ fun ActionFigureScreen(
     actionFigure3dModelProgressState: Int,
     onPickImage: () -> Unit,
     onGenerate: () -> Unit,
-    onGenerateModel: (String) -> Unit
+    onGenerateModel: (String) -> Unit,
+    onOrder: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -57,7 +58,7 @@ fun ActionFigureScreen(
             ActionFigureUiState.ActionFigureModel -> ModelViewerScreen(
                 progress = actionFigure3dModelProgressState,
                 modelByteArray = actionFigure3dModel,
-                onOrder = {}
+                onOrder = onOrder
             )
         }
     }
@@ -85,7 +86,8 @@ private fun ActionFigureScreenPreview() {
             actionFigure3dModelProgressState = 32,
             onPickImage = {},
             onGenerate = {},
-            onGenerateModel = {}
+            onGenerateModel = {},
+            onOrder = {}
         )
     }
 }
