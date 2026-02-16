@@ -28,6 +28,7 @@ fun ActionFigureScreen(
     imageUploadState: ImageUploadState?,
     actionFigureGenerationState: ActionFigureGenerationState,
     actionFigure3dModel: ByteArray?,
+    actionFigure3dModelProgressState: Int,
     onPickImage: () -> Unit,
     onGenerate: () -> Unit,
     onGenerateModel: (String) -> Unit
@@ -54,6 +55,7 @@ fun ActionFigureScreen(
             )
 
             ActionFigureUiState.ActionFigureModel -> ModelViewerScreen(
+                progress = actionFigure3dModelProgressState,
                 modelByteArray = actionFigure3dModel,
                 onOrder = {}
             )
@@ -80,6 +82,7 @@ private fun ActionFigureScreenPreview() {
             imageUploadState = null,
             actionFigureGenerationState = ActionFigureGenerationState.Initial(),
             actionFigure3dModel = byteArrayOf(),
+            actionFigure3dModelProgressState = 32,
             onPickImage = {},
             onGenerate = {},
             onGenerateModel = {}

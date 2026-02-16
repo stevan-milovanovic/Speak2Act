@@ -19,6 +19,9 @@ class ActionFigure3DViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ByteArray?>(null)
     val uiState: StateFlow<ByteArray?> = _uiState
 
+    private val _progressState = MutableStateFlow(0)
+    val progressState: StateFlow<Int> = _progressState
+
     fun create3DModel(imageUrl: String) {
         viewModelScope.launch {
             val response = actionFigureModelService.generateActionFigure3DModel(imageUrl)
@@ -34,7 +37,9 @@ class ActionFigure3DViewModel @Inject constructor(
         while (true) {
             val response = actionFigureModelService.fetchActionFigure3DModelTaskStatus(taskId)
             val taskResponse = response.getOrNull()
-
+            taskResponse?.progress?.let {
+                _progressState.value = it
+            }
             when (taskResponse?.status) {
                 TaskStatus.SUCCEEDED ->
                     return taskResponse.modelUrl ?: error("Generation failed")

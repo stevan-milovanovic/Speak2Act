@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
             val imageUploadState by actionFigureViewModel.imageUploadState.collectAsStateWithLifecycle()
             val actionFigureGenerationState by actionFigureViewModel.actionFigureGenerationState.collectAsStateWithLifecycle()
             val actionFigure3dModel by actionFigure3DViewModel.uiState.collectAsStateWithLifecycle()
+            val actionFigure3dModelProgressState by actionFigure3DViewModel.progressState.collectAsStateWithLifecycle()
 
             val action = remember { mutableStateOf<Action?>(null) }
 
@@ -176,6 +177,7 @@ class MainActivity : ComponentActivity() {
                                 imageUploadState = imageUploadState,
                                 actionFigureGenerationState = actionFigureGenerationState,
                                 actionFigure3dModel = actionFigure3dModel,
+                                actionFigure3dModelProgressState = actionFigure3dModelProgressState,
                                 onPickImage = { actionFigureImageLauncher.launch("image/*") },
                                 onGenerate = actionFigureViewModel::generate,
                                 onGenerateModel = { imageUrl ->

@@ -1,9 +1,6 @@
 package rs.smobile.speak2act.feature.actionfigure.ui.draft
 
 import android.view.Choreographer
-import android.view.MotionEvent
-import android.view.ScaleGestureDetector
-import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,10 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -37,14 +34,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.android.filament.utils.ModelViewer
 import rs.smobile.speak2act.R
 import rs.smobile.speak2act.core.theme.Speak2ActTheme
-import rs.smobile.speak2act.feature.actionfigure.data.setIblLights
-import rs.smobile.speak2act.feature.actionfigure.data.setSkyboxLights
+import rs.smobile.speak2act.feature.actionfigure.data.loadActionFigureModel
+import rs.smobile.speak2act.feature.actionfigure.data.provideTouchListener
 import rs.smobile.speak2act.feature.actionfigure.ui.draft.component.FilamentSurfaceView
-import java.nio.ByteBuffer
 
 
 @Composable
 fun ModelViewerScreen(
+    progress: Int,
     modelByteArray: ByteArray?,
     onOrder: () -> Unit
 ) {
@@ -91,31 +88,29 @@ fun ModelViewerScreen(
             contentAlignment = Alignment.Center
         ) {
             if (modelByteArray == null) {
-                CircularProgressIndicator(
-                    Modifier
-                        .size(160.dp),
-                    strokeWidth = 8.dp
-                )
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    LinearProgressIndicator(
+                        progress = { progress / 100f },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(18.dp)
+                    )
+                    Text(
+                        text = "$progress%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (progress >= 50) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
+                    )
+                }
             } else {
                 AndroidView(
                     factory = {
                         val surfaceView = FilamentSurfaceView(context)
                         val mv = ModelViewer(surfaceView)
-                        mv.setIblLights(context)
-                        mv.setSkyboxLights(context)
-                        mv.loadModelGlb(modelByteArray.toDirectByteBuffer())
-
-                        val pinchToZoomListener = PinchToZoomListener(mv.camera)
-                        val scaleDetector = ScaleGestureDetector(context, pinchToZoomListener)
-
-                        val listener = View.OnTouchListener { v, event ->
-                            scaleDetector.onTouchEvent(event)
-                            mv.onTouchEvent(event)
-                            if (event.action == MotionEvent.ACTION_UP) v.performClick()
-                            true
-                        }
+                        mv.loadActionFigureModel(context, modelByteArray)
                         modelViewer = mv
-                        surfaceView.setOnTouchListener(listener)
+                        surfaceView.setOnTouchListener(mv.provideTouchListener(context))
                         surfaceView
                     },
                     modifier = Modifier
@@ -139,17 +134,10 @@ fun ModelViewerScreen(
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun ModelViewerScreenPreview() {
     Speak2ActTheme {
-        ModelViewerScreen(null) {}
+        ModelViewerScreen(progress = 80, null) {}
     }
-}
-
-private fun ByteArray.toDirectByteBuffer(): ByteBuffer {
-    val buffer = ByteBuffer.allocateDirect(size)
-    buffer.put(this)
-    buffer.flip()
-    return buffer
 }
