@@ -8,24 +8,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import rs.smobile.speak2act.feature.billanalyzer.domain.Bill
-import rs.smobile.speak2act.feature.billanalyzer.domain.BillOcrService
+import rs.smobile.speak2act.feature.billanalyzer.domain.BillAnalyzerService
 import javax.inject.Inject
 
 @HiltViewModel
 class BillAnalyzerViewModel @Inject constructor(
-    private val billAnalyzer: BillOcrService
+    private val billAnalyzer: BillAnalyzerService
 ) : ViewModel() {
-
-    private companion object {
-        private const val TAG = "BillAnalyzerViewModel"
-    }
 
     private val _bill = MutableStateFlow<Bill?>(null)
     val bill = _bill.asStateFlow()
 
     fun analyzeBill(inputImage: InputImage) {
         viewModelScope.launch {
-            billAnalyzer.ocrOnDevice(inputImage).collect { bill ->
+            billAnalyzer.analyzeBillImage(inputImage).collect { bill ->
                 _bill.value = bill
             }
         }

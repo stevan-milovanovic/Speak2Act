@@ -1,5 +1,6 @@
 package rs.smobile.speak2act.feature.actionfigure.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +37,7 @@ import rs.smobile.speak2act.core.theme.Speak2ActTheme
 @Composable
 fun PickImageScreen(
     modifier: Modifier = Modifier,
+    @StringRes titleResId: Int,
     onPickImage: () -> Unit,
 ) {
     Column(
@@ -48,14 +50,16 @@ fun PickImageScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onPickImage() },
+                .clickable(onClick = onPickImage),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             )
         ) {
             Column(
-                modifier = Modifier.padding(32.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
@@ -75,7 +79,7 @@ fun PickImageScreen(
                 Spacer(Modifier.height(8.dp))
 
                 Text(
-                    text = stringResource(R.string.select_a_photo_to_transform_into_an_action_figure),
+                    text = stringResource(titleResId),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -98,7 +102,8 @@ private fun PickImageScreenPreview() {
     )
     Speak2ActTheme {
         PickImageScreen(
-            modifier = Modifier.background(backgroundGradient)
+            modifier = Modifier.background(backgroundGradient),
+            titleResId = R.string.select_a_photo_to_transform_into_an_action_figure,
         ) {}
     }
 }

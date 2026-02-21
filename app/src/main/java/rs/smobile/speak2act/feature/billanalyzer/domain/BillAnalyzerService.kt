@@ -6,6 +6,6 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Domain-level abstraction for extracting bill/receipt data from an image.
  */
-interface BillOcrService {
-    fun ocrOnDevice(image: InputImage): Flow<Bill?>
+interface BillAnalyzerService {
+    fun analyzeBillImage(image: InputImage): Flow<Bill?>
 }

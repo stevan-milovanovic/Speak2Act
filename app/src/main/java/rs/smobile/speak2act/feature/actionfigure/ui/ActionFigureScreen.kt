@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import rs.smobile.speak2act.R
 import rs.smobile.speak2act.core.theme.BackgroundDarkBottom
 import rs.smobile.speak2act.core.theme.BackgroundDarkTop
 import rs.smobile.speak2act.core.theme.Speak2ActTheme
@@ -42,7 +43,11 @@ fun ActionFigureScreen(
             .padding(innerPadding)
     ) {
         when (uiState) {
-            ActionFigureUiState.PickImage -> PickImageScreen(modifier, onPickImage)
+            ActionFigureUiState.PickImage -> PickImageScreen(
+                titleResId = R.string.select_a_photo_to_transform_into_an_action_figure,
+                onPickImage = onPickImage
+            )
+
             ActionFigureUiState.UploadImage -> UploadAndSelectStyleScreen(
                 state = imageUploadState,
                 selectedStyle = null,

@@ -19,13 +19,13 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import rs.smobile.speak2act.core.ai.AiModels
 import rs.smobile.speak2act.feature.billanalyzer.domain.Bill
+import rs.smobile.speak2act.feature.billanalyzer.domain.BillAnalyzerService
 import rs.smobile.speak2act.feature.billanalyzer.domain.BillItem
-import rs.smobile.speak2act.feature.billanalyzer.domain.BillOcrService
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class MlKitBillOcrService @Inject constructor() : BillOcrService {
+class MlKitFirebaseAiBillAnalyzerService @Inject constructor() : BillAnalyzerService {
 
     private companion object {
         private const val TAG = "MlKitBillOcrService"
@@ -44,7 +44,7 @@ class MlKitBillOcrService @Inject constructor() : BillOcrService {
     }
 
     init {
-        val genAI = Firebase.ai(backend = GenerativeBackend.Companion.googleAI())
+        val genAI = Firebase.ai(backend = GenerativeBackend.googleAI())
         with(AiModels.BillAnalyzer) {
             generativeModel = genAI.generativeModel(
                 modelName = name,
@@ -56,13 +56,13 @@ class MlKitBillOcrService @Inject constructor() : BillOcrService {
         }
     }
 
-    override fun ocrOnDevice(image: InputImage): Flow<Bill?> = flow {
+    override fun analyzeBillImage(image: InputImage): Flow<Bill?> = flow {
         val ocrResult = recognizer.process(image).await()
-        val bill = processRawResult(ocrResult.text)
+        val bill = analyzeWithGenerativeModel(ocrResult.text)
         emit(bill)
     }
 
-    private suspend fun processRawResult(rawOcrText: String): Bill? {
+    private suspend fun analyzeWithGenerativeModel(rawOcrText: String): Bill? {
         Log.d(TAG, "rawOcrText: $rawOcrText")
         val response = generativeModel.generateContent(rawOcrText)
         val jsonString = response.text ?: return null
