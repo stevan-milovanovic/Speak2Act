@@ -12,19 +12,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import rs.smobile.speak2act.feature.voicerecorder.domain.SpeechToTransactionAiService
+import rs.smobile.speak2act.feature.voicerecorder.data.WhisperAudioRecorder
 import rs.smobile.speak2act.feature.voicerecorder.domain.AudioRecorder
-import rs.smobile.speak2act.feature.voicerecorder.domain.Transaction
+import rs.smobile.speak2act.feature.voicerecorder.domain.SpeechToTransactionService
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class RecorderViewModel @Inject constructor(
     private val audioRecorder: AudioRecorder,
-    private val speechToTransactionAiService: SpeechToTransactionAiService
+    private val speechToTransactionService: SpeechToTransactionService
 ) : ViewModel() {
 
     private companion object {
         private const val TAG = "RecorderViewModel"
+
+        // Ignore accidental sub-100ms taps (16 kHz sample rate).
+        private const val MIN_SAMPLES = WhisperAudioRecorder.SAMPLE_RATE_HZ / 10
+
+        // Cap the live waveform history so it doesn't grow unbounded during long recordings.
+        private const val MAX_AMPLITUDE_BARS = 96
     }
 
     private val _amplitudes = MutableStateFlow<List<Float>>(emptyList())
@@ -45,8 +52,8 @@ class RecorderViewModel @Inject constructor(
 
         recordingJob = viewModelScope.launch {
             while (isActive) {
-                _amplitudes.update { it + audioRecorder.getAmplitude() }
-                delay(100)
+                _amplitudes.update { (it + audioRecorder.getAmplitude()).takeLast(MAX_AMPLITUDE_BARS) }
+                delay(100.milliseconds)
             }
         }
     }
@@ -54,12 +61,12 @@ class RecorderViewModel @Inject constructor(
     fun stopRecording() {
         recordingJob?.cancel()
         _isRecording.value = false
-        val file = audioRecorder.stop()
-        file?.let {
-            sendPrompt(it.readBytes())
-        } ?: run {
+        val audio = audioRecorder.stop()
+        if (audio.size < MIN_SAMPLES) {
             _uiState.value = VoiceRecorderUiState.Error("No recording available")
+            return
         }
+        transcribeAndParse(audio)
     }
 
     override fun onCleared() {
@@ -68,6 +75,7 @@ class RecorderViewModel @Inject constructor(
         } catch (t: Throwable) {
             Log.w(TAG, "Error during audioRecorder.stop() onCleared", t)
         }
+        speechToTransactionService.release()
     }
 
     fun clearData() {
@@ -76,27 +84,25 @@ class RecorderViewModel @Inject constructor(
         _isRecording.value = false
     }
 
-    private fun sendPrompt(
-        fileInBytes: ByteArray
-    ) {
+    private fun transcribeAndParse(audio: FloatArray) {
         _uiState.value = VoiceRecorderUiState.Loading
 
         viewModelScope.launch {
-            val result = try {
-                speechToTransactionAiService.extractTransaction(fileInBytes)
-            } catch (t: Throwable) {
-                Result.failure<Transaction?>(t)
+            val result = runCatching {
+                speechToTransactionService.parse(audio) { progress ->
+                    _uiState.value = VoiceRecorderUiState.DownloadingModel(progress)
+                }
             }
 
             result.fold(onSuccess = { transaction ->
                 if (transaction != null) {
                     _uiState.value = VoiceRecorderUiState.Success(transaction = transaction)
                 } else {
-                    _uiState.value = VoiceRecorderUiState.Error("No transaction extracted")
+                    _uiState.value = VoiceRecorderUiState.Error("No transaction detected")
                 }
             }, onFailure = { t ->
-                Log.e(TAG, "AI extraction failed", t)
-                _uiState.value = VoiceRecorderUiState.Error(t.message ?: "Unknown AI error")
+                Log.e(TAG, "On-device transcription failed", t)
+                _uiState.value = VoiceRecorderUiState.Error(t.message ?: "Unknown transcription error")
             })
         }
     }

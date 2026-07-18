@@ -43,10 +43,13 @@ import rs.smobile.speak2act.core.theme.BackgroundDarkBottom
 import rs.smobile.speak2act.core.theme.BackgroundDarkTop
 import rs.smobile.speak2act.core.theme.BrandBlueSoft
 import rs.smobile.speak2act.core.theme.Speak2ActTheme
-import rs.smobile.speak2act.feature.voicerecorder.domain.Transaction
+import rs.smobile.speak2act.feature.voicerecorder.domain.ParsedVoiceTransaction
+import rs.smobile.speak2act.feature.voicerecorder.domain.VoiceTransactionAction
 import rs.smobile.speak2act.feature.voicerecorder.ui.component.DetectionOutcome
 import rs.smobile.speak2act.feature.voicerecorder.ui.component.RecordButton
 import rs.smobile.speak2act.feature.voicerecorder.ui.component.Waveform
+import java.math.BigDecimal
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun VoiceRecorderScreen(
@@ -143,7 +146,7 @@ private fun RecorderContent(
         Spacer(modifier = Modifier.weight(1f))
 
         Text(
-            text = "Powered by Firebase AI Logic + Gemini",
+            text = "Powered by on-device Whisper",
             modifier = horizontalPaddingModifier.fillMaxWidth(),
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
@@ -160,7 +163,7 @@ private fun rememberRecordingTimer(isRecording: Boolean): Int {
         if (isRecording) {
             seconds = 0
             while (true) {
-                delay(1_000)
+                delay(1_000L.milliseconds)
                 seconds++
             }
         }
@@ -224,12 +227,12 @@ private fun SuccessPreview() {
             modifier = Modifier.background(backgroundGradient),
             innerPadding = PaddingValues(0.dp),
             uiState = VoiceRecorderUiState.Success(
-                Transaction(
-                    action = "Send",
-                    amount = 50.00,
-                    currency = "euros",
-                    person = "Maria",
-                    description = "Dinner"
+                ParsedVoiceTransaction(
+                    action = VoiceTransactionAction.SEND,
+                    amount = BigDecimal("50.00"),
+                    receiverName = "Maria",
+                    currency = "EUR",
+                    message = "for the dinner"
                 )
             ),
             isRecording = false,

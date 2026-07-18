@@ -1,0 +1,1 @@
+v1.7.6 (tag a8d002c) vendored from https://github.com/ggerganov/whisper.cpp
