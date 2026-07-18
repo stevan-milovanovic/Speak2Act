@@ -1,6 +1,7 @@
 package rs.smobile.speak2act.feature.voicerecorder.ui.component
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import rs.smobile.speak2act.R
+import rs.smobile.speak2act.feature.voicerecorder.domain.VoiceTransactionAction
 import rs.smobile.speak2act.feature.voicerecorder.ui.VoiceRecorderUiState
 
 
@@ -36,6 +38,23 @@ fun DetectionOutcome(
             CircularProgressIndicator()
         }
 
+        is VoiceRecorderUiState.DownloadingModel -> Column(
+            modifier = modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            CircularProgressIndicator(progress = { uiState.progress.coerceIn(0f, 1f) })
+            Text(
+                text = stringResource(
+                    R.string.downloading_model,
+                    (uiState.progress * 100f).toInt()
+                ),
+                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+
         is VoiceRecorderUiState.Error -> Text(
             text = uiState.response,
             modifier = modifier.fillMaxWidth(),
@@ -46,6 +65,7 @@ fun DetectionOutcome(
 
         VoiceRecorderUiState.Initial -> Unit
         is VoiceRecorderUiState.Success -> {
+            val transaction = uiState.transaction
             Surface(
                 modifier = modifier,
                 shape = RoundedCornerShape(16.dp),
@@ -67,20 +87,31 @@ fun DetectionOutcome(
                     )
                     HorizontalDivider()
                     Spacer(Modifier.size(16.dp))
-                    OutcomeText(R.string.action, uiState.transaction?.action)
-                    uiState.transaction?.amount?.let { amount ->
+                    OutcomeText(R.string.action, transaction?.action?.displayLabel())
+                    transaction?.amount?.let { amount ->
                         Spacer(Modifier.size(16.dp))
-                        OutcomeText(R.string.amount, stringResource(R.string.amount_format, amount))
+                        OutcomeText(
+                            R.string.amount,
+                            stringResource(R.string.amount_format, amount.toDouble())
+                        )
                     }
                     Spacer(Modifier.size(16.dp))
-                    OutcomeText(R.string.currency, uiState.transaction?.currency)
+                    OutcomeText(R.string.currency, transaction?.currency)
                     Spacer(Modifier.size(16.dp))
-                    OutcomeText(R.string.recipient, uiState.transaction?.person)
+                    OutcomeText(R.string.recipient, transaction?.receiverName)
                     Spacer(Modifier.size(16.dp))
-                    OutcomeText(R.string.purpose, uiState.transaction?.description)
+                    OutcomeText(R.string.purpose, transaction?.message)
                     Spacer(Modifier.size(16.dp))
                 }
             }
         }
     }
 }
+
+@Composable
+private fun VoiceTransactionAction.displayLabel(): String = stringResource(
+    when (this) {
+        VoiceTransactionAction.SEND -> R.string.transaction_action_send
+        VoiceTransactionAction.REQUEST -> R.string.transaction_action_request
+    }
+)

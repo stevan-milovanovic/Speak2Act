@@ -14,6 +14,9 @@
     <string name="purpose">Purpose</string>
     <string name="none">N/A</string>
     <string name="amount_format">%.2f</string>
+    <string name="downloading_model">Downloading model… %1$d%%</string>
+    <string name="transaction_action_send">Send</string>
+    <string name="transaction_action_request">Request</string>
     <string name="quantity">%1$dx</string>
     <string name="bill_summary">Bill Summary</string>
     <string name="total_amount">Total Amount</string>

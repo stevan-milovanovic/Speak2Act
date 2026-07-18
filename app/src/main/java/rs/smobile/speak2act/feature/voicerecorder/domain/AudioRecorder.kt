@@ -1,13 +1,13 @@
 package rs.smobile.speak2act.feature.voicerecorder.domain
 
-import java.io.File
-
 interface AudioRecorder {
     fun start()
+
     /**
-     * Stop recording and return the recorded file or null if none available.
+     * Stop recording and return the captured audio as 16 kHz mono normalized floats
+     * (empty if nothing was recorded).
      */
-    fun stop(): File?
+    fun stop(): FloatArray
 
     /**
      * @return normalized amplitude in range [0f, 1f]

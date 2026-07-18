@@ -23,6 +23,14 @@ plugins {
 android {
     namespace = "rs.smobile.speak2act"
     compileSdk = 36
+    ndkVersion = "28.2.13676358"
+
+    // Local Whisper (whisper.cpp) on-device speech-to-text native build.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
 
     defaultConfig {
         applicationId = "rs.smobile.speak2act"
@@ -37,6 +45,21 @@ android {
         buildConfigField("String", "ACTION_FIGURE_TEST_IMAGE", "\"$actionFigureTestImage\"")
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"$cloudinaryCloudName\"")
         buildConfigField("String", "MESHY_API_KEY", "\"$meshyApiKey\"")
+
+        externalNativeBuild {
+            cmake {
+                arguments += listOf(
+                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
+                    "-DGGML_OPENMP=OFF",
+                    "-DGGML_LLAMAFILE=OFF"
+                )
+                cppFlags += "-std=c++17"
+            }
+        }
+        // Whisper native libs are built and packaged for 64-bit ARM devices only.
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     buildTypes {
@@ -46,6 +69,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
     compileOptions {
