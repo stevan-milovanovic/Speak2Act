@@ -6,6 +6,8 @@ import android.content.pm.PackageManager.PERMISSION_GRANTED
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,9 +17,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,10 +47,14 @@ import rs.smobile.speak2act.core.theme.BackgroundDarkBottom
 import rs.smobile.speak2act.core.theme.BackgroundDarkTop
 import rs.smobile.speak2act.core.theme.BrandBlueSoft
 import rs.smobile.speak2act.core.theme.Speak2ActTheme
+import rs.smobile.speak2act.feature.voicerecorder.domain.InferenceRoute
 import rs.smobile.speak2act.feature.voicerecorder.domain.Transaction
+import rs.smobile.speak2act.feature.voicerecorder.domain.TransactionAction
 import rs.smobile.speak2act.feature.voicerecorder.ui.component.DetectionOutcome
 import rs.smobile.speak2act.feature.voicerecorder.ui.component.RecordButton
 import rs.smobile.speak2act.feature.voicerecorder.ui.component.Waveform
+import java.math.BigDecimal
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun VoiceRecorderScreen(
@@ -55,7 +63,12 @@ fun VoiceRecorderScreen(
     uiState: VoiceRecorderUiState,
     isRecording: Boolean,
     amplitudes: List<Float>,
-    onRecordClick: () -> Unit
+    onRecordClick: () -> Unit,
+    onConfirmClick: () -> Unit = {},
+    onCancelClick: () -> Unit = {},
+    cloudConsent: Boolean? = false,
+    onCloudConsentAnswer: (Boolean) -> Unit = {},
+    showHybridDetails: Boolean = true
 ) {
     val context = LocalContext.current
     var permissionGranted by remember { mutableStateOf(getAudioPermissionState(context)) }
@@ -72,7 +85,13 @@ fun VoiceRecorderScreen(
     if (!permissionGranted) {
         Text(stringResource(R.string.microphone_permission_is_required))
     } else {
-        RecorderContent(modifier, innerPadding, uiState, isRecording, amplitudes, onRecordClick)
+        // Asked once, before the first recording. Declining keeps every command on the device.
+        if (showHybridDetails && cloudConsent == null) {
+            CloudConsentDialog(onCloudConsentAnswer)
+        }
+        RecorderContent(
+            modifier, innerPadding, uiState, isRecording, amplitudes, onRecordClick, onConfirmClick, onCancelClick
+        )
     }
 }
 
@@ -83,7 +102,9 @@ private fun RecorderContent(
     uiState: VoiceRecorderUiState,
     isRecording: Boolean,
     amplitudes: List<Float>,
-    onRecordClick: () -> Unit
+    onRecordClick: () -> Unit,
+    onConfirmClick: () -> Unit,
+    onCancelClick: () -> Unit,
 ) {
     val timerSeconds = rememberRecordingTimer(isRecording)
 
@@ -109,7 +130,7 @@ private fun RecorderContent(
             RecordButton(
                 modifier = Modifier.size(size),
                 isRecording = isRecording,
-                enabled = uiState !is VoiceRecorderUiState.Loading,
+                enabled = uiState !is VoiceRecorderUiState.Loading && uiState !is VoiceRecorderUiState.Executing,
                 onRecordButtonTap = onRecordClick
             )
         }
@@ -138,19 +159,37 @@ private fun RecorderContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        DetectionOutcome(horizontalPaddingModifier, uiState)
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        Text(
-            text = "Powered by Firebase AI Logic + Gemini",
-            modifier = horizontalPaddingModifier.fillMaxWidth(),
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        // The result card plus Confirm/Cancel can be taller than the space left on small screens,
+        // so this area scrolls while the record button and the footer stay in place.
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+        ) {
+            DetectionOutcome(horizontalPaddingModifier, uiState, onConfirmClick, onCancelClick)
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
+}
+
+@Composable
+private fun CloudConsentDialog(onAnswer: (Boolean) -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text(stringResource(R.string.cloud_consent_title)) },
+        text = { Text(stringResource(R.string.cloud_consent_text)) },
+        confirmButton = {
+            TextButton(onClick = { onAnswer(true) }) {
+                Text(stringResource(R.string.cloud_consent_allow))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onAnswer(false) }) {
+                Text(stringResource(R.string.cloud_consent_on_device_only))
+            }
+        }
+    )
 }
 
 @Composable
@@ -160,7 +199,7 @@ private fun rememberRecordingTimer(isRecording: Boolean): Int {
         if (isRecording) {
             seconds = 0
             while (true) {
-                delay(1_000)
+                delay(1_000L.milliseconds)
                 seconds++
             }
         }
@@ -171,9 +210,16 @@ private fun rememberRecordingTimer(isRecording: Boolean): Int {
 private fun getAudioPermissionState(context: Context): Boolean =
     checkSelfPermission(context, RECORD_AUDIO) == PERMISSION_GRANTED
 
-@Preview(showBackground = true)
+private val PREVIEW_TRANSACTION = Transaction(
+    action = TransactionAction.REQUEST,
+    amount = BigDecimal("10.00"),
+    currency = "EUR",
+    receiverName = "Marija",
+    message = "for the taxi bill"
+)
+
 @Composable
-private fun LoadingPreview() {
+private fun PreviewScreen(uiState: VoiceRecorderUiState) {
     Speak2ActTheme {
         val backgroundGradient = Brush.linearGradient(
             colors = listOf(BackgroundDarkTop, BackgroundDarkBottom),
@@ -183,57 +229,77 @@ private fun LoadingPreview() {
         VoiceRecorderScreen(
             modifier = Modifier.background(backgroundGradient),
             innerPadding = PaddingValues(0.dp),
-            uiState = VoiceRecorderUiState.Loading,
+            uiState = uiState,
             isRecording = false,
             amplitudes = emptyList(),
             onRecordClick = {}
         )
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LoadingPreview() {
+    PreviewScreen(VoiceRecorderUiState.Loading)
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun ErrorPreview() {
-    Speak2ActTheme {
-        val backgroundGradient = Brush.linearGradient(
-            colors = listOf(BackgroundDarkTop, BackgroundDarkBottom),
-            start = Offset.Zero,
-            end = Offset.Infinite
-        )
-        VoiceRecorderScreen(
-            modifier = Modifier.background(backgroundGradient),
-            innerPadding = PaddingValues(0.dp),
-            uiState = VoiceRecorderUiState.Error("Send Maria 50 euros for the dinner"),
-            isRecording = false,
-            amplitudes = emptyList(),
-            onRecordClick = {}
-        )
-    }
+    PreviewScreen(VoiceRecorderUiState.Error("How much would you like to send to Marija?"))
 }
 
 @Preview(showBackground = true)
 @Composable
-private fun SuccessPreview() {
-    Speak2ActTheme {
-        val backgroundGradient = Brush.linearGradient(
-            colors = listOf(BackgroundDarkTop, BackgroundDarkBottom),
-            start = Offset.Zero,
-            end = Offset.Infinite
+private fun NotUnderstoodPreview() {
+    PreviewScreen(
+        VoiceRecorderUiState.Error(
+            "Didn't catch that — try “Send 10 francs to Stefan”. Nothing was sent.",
+            heard = "I owe Stefan ten francs for the pizza."
         )
-        VoiceRecorderScreen(
-            modifier = Modifier.background(backgroundGradient),
-            innerPadding = PaddingValues(0.dp),
-            uiState = VoiceRecorderUiState.Success(
-                Transaction(
-                    action = "Send",
-                    amount = 50.00,
-                    currency = "euros",
-                    person = "Maria",
-                    description = "Dinner"
-                )
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun EdgeSuccessPreview() {
+    PreviewScreen(
+        VoiceRecorderUiState.Success(
+            transaction = PREVIEW_TRANSACTION,
+            route = InferenceRoute.EDGE,
+            heard = "Request 10 euros from Marija for the taxi bill.",
+            latency = 800.milliseconds
+        )
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun CloudTextSuccessPreview() {
+    PreviewScreen(
+        VoiceRecorderUiState.Success(
+            transaction = Transaction(
+                action = TransactionAction.SEND,
+                amount = BigDecimal("10.00"),
+                currency = "CHF",
+                receiverName = "Stefan",
+                message = "pizza"
             ),
-            isRecording = false,
-            amplitudes = emptyList(),
-            onRecordClick = {})
-    }
+            route = InferenceRoute.CLOUD_TEXT,
+            heard = "I owe Stefan ten francs for the pizza.",
+            latency = 1900.milliseconds
+        )
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ExecutingPreview() {
+    PreviewScreen(VoiceRecorderUiState.Executing(PREVIEW_TRANSACTION))
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ExecutedPreview() {
+    PreviewScreen(VoiceRecorderUiState.Executed(PREVIEW_TRANSACTION))
 }

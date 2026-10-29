@@ -24,13 +24,13 @@ fun OutcomeText(
         Text(
             text = stringResource(titleResId),
             fontWeight = FontWeight.Medium,
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text = text ?: stringResource(R.string.none),
             fontWeight = FontWeight.Medium,
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground
         )
     }

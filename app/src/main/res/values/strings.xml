@@ -14,6 +14,20 @@
     <string name="purpose">Purpose</string>
     <string name="none">N/A</string>
     <string name="amount_format">%.2f</string>
+    <string name="downloading_model">Downloading model… %1$d%%</string>
+    <string name="transaction_action_send">Send</string>
+    <string name="transaction_action_request">Request</string>
+    <string name="transaction_action_split">Split</string>
+    <string name="route_on_device">📱 On-device</string>
+    <string name="route_cloud_fallback">☁️ Cloud fallback</string>
+    <string name="route_cloud_audio">☁️ Cloud (audio)</string>
+    <string name="heard">Heard: “%1$s”</string>
+    <string name="voice_footer_talk1">Powered by Firebase AI Logic + Gemini</string>
+    <string name="voice_footer">On-device Whisper · cloud fallback via Firebase AI Logic</string>
+    <string name="cloud_consent_title">Understand more with the cloud?</string>
+    <string name="cloud_consent_text">Speak2Act understands most commands on your phone. When it can\'t, it can send what you said to Google Gemini through Firebase — normally just the text. You still confirm every transaction.</string>
+    <string name="cloud_consent_allow">Allow</string>
+    <string name="cloud_consent_on_device_only">On-device only</string>
     <string name="quantity">%1$dx</string>
     <string name="bill_summary">Bill Summary</string>
     <string name="total_amount">Total Amount</string>
@@ -36,4 +50,11 @@
     <string name="select_a_bill_to_be_analysed">Select a bill to be analysed</string>
     <string name="select_a_photo_to_transform_into_an_action_figure">Select a photo to transform into an action figure</string>
     <string name="choose_image">Choose image</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
+    <string name="executing_transaction">Sending…</string>
+    <string name="payment_sent">Payment sent to %1$s</string>
+    <string name="money_requested">Money requested from %1$s</string>
+    <string name="split_request_sent">Split request sent to %1$s</string>
+    <string name="demo_no_real_money">Demo: no real money is moved</string>
 </resources>

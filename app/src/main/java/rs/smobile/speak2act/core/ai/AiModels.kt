@@ -15,28 +15,73 @@ object AiModels {
     const val DESCRIPTION_PARAM = "description"
 
     val SpeechToTransaction = AiModel(
-        systemInstruction = "You are a banking app. The user records an audio message in which he's saying what is the action, " +
-                "e.g. pay, split, request the money. It defines the value in swiss francs and he specifies to whom he wants to " +
-                "send the money, or to split the money with, or to request the money from. Optionally he can define the reason " +
-                "for the transaction, like it's for a dinner or travel expenses. " +
-                "Extract in bullet points: 1.action, 2.amount, 3.currency, 4.person(contact) and 5.description(reason).",
+        systemInstruction = """
+            You are the voice assistant of a mobile payments app.
+            The user records a short spoken instruction to pay, request or split money with one of their contacts.
+            Call the executeTransaction function with:
+            - action: pay, request or split
+            - amount: the numeric amount
+            - currency: the currency the user mentions; if none is mentioned, use CHF
+            - person: the contact name exactly as spoken
+            - description: the reason for the transaction, only if mentioned
+            If the action, the amount or the person is missing or unclear, do not call the function.
+            Instead, reply with one short clarifying question.
+        """.trimIndent(),
         tools = listOf(
             Tool.functionDeclarations(
                 listOf(
                     FunctionDeclaration(
-                        EXECUTE_TRANSACTION_FUNCTION_NAME,
-                        "Get the transaction payload.",
-                        mapOf(
-                            ACTION_PARAM to Schema.string("Pay, split or request the money."),
-                            AMOUNT_PARAM to Schema.string("Amount of the transaction. Should be double."),
-                            CURRENCY_PARAM to Schema.string("Currency of the transaction."),
-                            PERSON_PARAM to Schema.string("Contact to whom the transaction should be addressed to."),
+                        name = EXECUTE_TRANSACTION_FUNCTION_NAME,
+                        description = "Prepares a money transaction for the user to confirm.",
+                        parameters = mapOf(
+                            ACTION_PARAM to Schema.enumeration(listOf("pay", "request", "split"), "Type of the transaction."),
+                            AMOUNT_PARAM to Schema.double("Amount of the transaction."),
+                            CURRENCY_PARAM to Schema.string("Currency of the transaction, e.g. CHF or EUR."),
+                            PERSON_PARAM to Schema.string("Contact to whom the transaction is addressed."),
                             DESCRIPTION_PARAM to Schema.string("The reason for the transaction."),
-                        )
+                        ),
+                        optionalParameters = listOf(DESCRIPTION_PARAM),
                     )
                 )
             )
         )
+    )
+
+    /**
+     * Cloud fallback of the hybrid voice pipeline: receives only the on-device transcript (text).
+     * Same function contract as [SpeechToTransaction].
+     */
+    val TranscriptToTransaction = AiModel(
+        systemInstruction = """
+            You are the voice assistant of a mobile payments app.
+            The user spoke a short instruction to pay, request or split money with one of their contacts.
+            You receive the text as it was transcribed on the device. It may contain recognition errors
+            (misspelled names, numbers written as words, missing punctuation).
+            Call the executeTransaction function with:
+            - action: pay, request or split
+            - amount: the numeric amount
+            - currency: the currency the user mentions; if none is mentioned, use CHF
+            - person: the contact name as transcribed
+            - description: the reason for the transaction, only if mentioned
+            If the action, the amount or the person is missing or unclear, do not call the function.
+            Instead, reply with one short clarifying question.
+        """.trimIndent(),
+        tools = SpeechToTransaction.tools
+    )
+
+    // Declared before BillAnalyzer: object properties initialize top to bottom, so a schema
+    // declared below the model would still be null when the model's generationConfig is built.
+    private val billItemSchema = Schema.obj(
+        properties = mapOf(
+            "quantity" to Schema.integer(description = "The number of units"),
+            "description" to Schema.string(description = "The description of the item or dish"),
+            "price" to Schema.double(description = "The price of the item")
+        ),
+        optionalProperties = listOf("quantity"),
+        title = "items"
+    )
+    val billSchema = Schema.obj(
+        properties = mapOf("items" to Schema.array(billItemSchema))
     )
 
     val BillAnalyzer = AiModel(
@@ -52,19 +97,6 @@ object AiModels {
             responseMimeType = "application/json"
             responseSchema = billSchema
         }
-    )
-
-    private val billItemSchema = Schema.obj(
-        properties = mapOf(
-            "quantity" to Schema.integer(description = "The number of units"),
-            "description" to Schema.string(description = "The description of the item or dish"),
-            "price" to Schema.double(description = "The price of the item")
-        ),
-        optionalProperties = listOf("quantity"),
-        title = "items"
-    )
-    val billSchema = Schema.obj(
-        properties = mapOf("items" to Schema.array(billItemSchema))
     )
 
 }

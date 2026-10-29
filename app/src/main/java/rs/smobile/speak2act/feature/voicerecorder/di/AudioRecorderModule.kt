@@ -4,7 +4,7 @@ import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import rs.smobile.speak2act.feature.voicerecorder.data.AndroidAudioRecorder
+import rs.smobile.speak2act.feature.voicerecorder.data.WhisperAudioRecorder
 import rs.smobile.speak2act.feature.voicerecorder.domain.AudioRecorder
 import javax.inject.Singleton
 
@@ -14,6 +14,6 @@ abstract class AudioRecorderModule {
     @Binds
     @Singleton
     abstract fun bindAudioRecorder(
-        impl: AndroidAudioRecorder
+        impl: WhisperAudioRecorder
     ): AudioRecorder
 }

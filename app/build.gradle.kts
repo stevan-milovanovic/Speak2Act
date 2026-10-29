@@ -10,6 +10,13 @@ val uploadTestImage: String = localProps.getProperty("UPLOAD_TEST_IMAGE", "")
 val actionFigureTestImage: String = localProps.getProperty("ACTION_FIGURE_TEST_IMAGE", "")
 val meshyApiKey: String = localProps.getProperty("MESHY_API_KEY", "")
 
+// Which conference talk the demo build shows: 1 = "AI Agents on Android" (raw audio → Gemini),
+// 2 = "Edge AI and Serverless" (hybrid on-device/cloud). Set DEMO_TALK in local.properties or pass
+// -PdemoTalk=1 on the command line. Defaults to talk 2.
+val demoTalk: String = (findProperty("demoTalk") as String?)
+    ?: localProps.getProperty("DEMO_TALK", "2")
+require(demoTalk == "1" || demoTalk == "2") { "DEMO_TALK must be 1 or 2, was '$demoTalk'" }
+
 plugins {
     alias(libs.plugins.android.application)
     kotlin("android")
@@ -23,6 +30,14 @@ plugins {
 android {
     namespace = "rs.smobile.speak2act"
     compileSdk = 36
+    ndkVersion = "28.2.13676358"
+
+    // Local Whisper (whisper.cpp) on-device speech-to-text native build.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
 
     defaultConfig {
         applicationId = "rs.smobile.speak2act"
@@ -37,6 +52,22 @@ android {
         buildConfigField("String", "ACTION_FIGURE_TEST_IMAGE", "\"$actionFigureTestImage\"")
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"$cloudinaryCloudName\"")
         buildConfigField("String", "MESHY_API_KEY", "\"$meshyApiKey\"")
+        buildConfigField("int", "DEMO_TALK", demoTalk)
+
+        externalNativeBuild {
+            cmake {
+                arguments += listOf(
+                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
+                    "-DGGML_OPENMP=OFF",
+                    "-DGGML_LLAMAFILE=OFF"
+                )
+                cppFlags += "-std=c++17"
+            }
+        }
+        // Whisper native libs are built and packaged for 64-bit ARM devices only.
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     buildTypes {
@@ -46,6 +77,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
         }
     }
     compileOptions {
@@ -77,6 +114,9 @@ dependencies {
     // Firebase AI Logic
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.ai)
+    // Firebase App Check: Play Integrity in release, debug provider in debug builds
+    implementation(libs.firebase.appcheck.playintegrity)
+    debugImplementation(libs.firebase.appcheck.debug)
     // ML Kit Text Recognition
     implementation(libs.text.recognition)
     implementation(libs.kotlinx.coroutines.play.services)

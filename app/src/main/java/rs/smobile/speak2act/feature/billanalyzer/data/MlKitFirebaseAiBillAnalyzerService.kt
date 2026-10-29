@@ -18,6 +18,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import rs.smobile.speak2act.core.ai.AiModels
+import rs.smobile.speak2act.core.config.RoutingConfig
 import rs.smobile.speak2act.feature.billanalyzer.domain.Bill
 import rs.smobile.speak2act.feature.billanalyzer.domain.BillAnalyzerService
 import rs.smobile.speak2act.feature.billanalyzer.domain.BillItem
@@ -25,7 +26,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class MlKitFirebaseAiBillAnalyzerService @Inject constructor() : BillAnalyzerService {
+class MlKitFirebaseAiBillAnalyzerService @Inject constructor(
+    routing: RoutingConfig,
+) : BillAnalyzerService {
 
     private companion object {
         private const val TAG = "MlKitBillOcrService"
@@ -44,13 +47,13 @@ class MlKitFirebaseAiBillAnalyzerService @Inject constructor() : BillAnalyzerSer
     }
 
     init {
-        val genAI = Firebase.ai(backend = GenerativeBackend.googleAI())
+        val genAI = Firebase.ai(backend = GenerativeBackend.googleAI(), useLimitedUseAppCheckTokens = true)
         with(AiModels.BillAnalyzer) {
             generativeModel = genAI.generativeModel(
-                modelName = name,
+                modelName = routing.modelName,
                 generationConfig = generationConfig,
                 safetySettings = safetySettings,
-                systemInstruction = content { systemInstruction },
+                systemInstruction = content { text(systemInstruction) },
                 tools = tools
             )
         }
