@@ -19,6 +19,12 @@
     <string name="transaction_action_request">Request</string>
     <string name="transaction_action_split">Split</string>
     <string name="route_on_device">📱 On-device</string>
+    <string name="route_on_device_llm">🧠 On-device LLM</string>
+    <string name="on_device_model_downloading">🧠 On-device model · downloading %1$d%%</string>
+    <string name="on_device_model_loading">🧠 On-device model · loading…</string>
+    <string name="on_device_model_ready">🧠 On-device model ready</string>
+    <string name="on_device_model_missing">🧠 On-device model · connect to Wi-Fi to download</string>
+    <string name="on_device_model_unavailable">🧠 On-device model unavailable</string>
     <string name="route_cloud_fallback">☁️ Cloud fallback</string>
     <string name="route_cloud_audio">☁️ Cloud (audio)</string>
     <string name="heard">Heard: “%1$s”</string>

@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# LiteRT-LM: JNI + reflection, no consumer rules in the AAR.
+-keep class com.google.ai.edge.litertlm.** { *; }
+-keep class * implements com.google.ai.edge.litertlm.OpenApiTool { *; }

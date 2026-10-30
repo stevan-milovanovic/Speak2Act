@@ -6,6 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -13,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -20,6 +22,8 @@ import rs.smobile.speak2act.core.config.DemoTalk
 import rs.smobile.speak2act.core.privacy.CloudConsentStore
 import rs.smobile.speak2act.feature.voicerecorder.domain.AudioRecorder
 import rs.smobile.speak2act.feature.voicerecorder.domain.InferenceRoute
+import rs.smobile.speak2act.feature.voicerecorder.domain.OnDeviceModelStatus
+import rs.smobile.speak2act.feature.voicerecorder.domain.OnDeviceTransactionModel
 import rs.smobile.speak2act.feature.voicerecorder.domain.SpeechToTransactionService
 import rs.smobile.speak2act.feature.voicerecorder.domain.StageTimings
 import rs.smobile.speak2act.feature.voicerecorder.domain.Transaction
@@ -48,6 +52,7 @@ class RecorderViewModelTest {
             TRANSACTION, InferenceRoute.EDGE, TRANSCRIPT, StageTimings(total = LATENCY)
         )
         private const val EXECUTION_DELAY_MS = 500L
+        private const val STEP_MS = 100L
 
         // 1 s of 16 kHz audio: above the 100 ms minimum.
         private val AUDIO = FloatArray(16_000)
@@ -68,14 +73,91 @@ class RecorderViewModelTest {
     private fun createViewModel(
         voiceResult: VoiceResult = PROPOSED,
         executorResult: Result<Unit> = Result.success(Unit),
-        demoTalk: DemoTalk = DemoTalk.EDGE_AND_SERVERLESS
+        demoTalk: DemoTalk = DemoTalk.EDGE_AND_SERVERLESS,
+        onDeviceModel: FakeOnDeviceModel = FakeOnDeviceModel(),
+        modelProgress: List<Float> = emptyList(),
     ) = RecorderViewModel(
         FakeAudioRecorder(AUDIO),
-        FakeSpeechToTransactionService(voiceResult),
+        FakeSpeechToTransactionService(voiceResult, modelProgress),
         FakeTransactionExecutor(executorResult),
         FakeCloudConsentStore(),
-        demoTalk
+        demoTalk,
+        onDeviceModel,
     )
+
+    @Test
+    fun stopRecording_withCachedModel_showsTheSpinner_neverADownload() = runTest {
+        val vm = createViewModel()
+
+        vm.startRecording()
+        vm.stopRecording()
+        runCurrent()
+
+        assertEquals(VoiceRecorderUiState.Loading, vm.uiState.value)
+        advanceUntilIdle()
+        assertEquals(
+            VoiceRecorderUiState.Success(TRANSACTION, InferenceRoute.EDGE, TRANSCRIPT, LATENCY),
+            vm.uiState.value
+        )
+    }
+
+    @Test
+    fun stopRecording_firstUseDownload_showsProgress_thenTheSpinner() = runTest {
+        val vm = createViewModel(modelProgress = listOf(0.5f, 1f))
+
+        vm.startRecording()
+        vm.stopRecording()
+        runCurrent()
+        assertEquals(VoiceRecorderUiState.DownloadingModel(0.5f), vm.uiState.value)
+
+        advanceTimeBy(STEP_MS)
+        runCurrent()
+        assertEquals(VoiceRecorderUiState.Loading, vm.uiState.value)   // downloaded: loading and transcribing
+
+        advanceUntilIdle()
+        assertEquals(
+            VoiceRecorderUiState.Success(TRANSACTION, InferenceRoute.EDGE, TRANSCRIPT, LATENCY),
+            vm.uiState.value
+        )
+    }
+
+    @Test
+    fun talk3_init_preparesTheOnDeviceModel() {
+        val model = FakeOnDeviceModel()
+
+        val vm = createViewModel(demoTalk = DemoTalk.ON_DEVICE_LLM, onDeviceModel = model)
+
+        assertEquals(1, model.prepareCalls)
+        assertTrue(vm.showsOnDeviceModel)
+        assertEquals(OnDeviceModelStatus.Loading, vm.onDeviceModelStatus.value)
+    }
+
+    @Test
+    fun talk2_init_doesNotPrepareTheOnDeviceModel() {
+        val model = FakeOnDeviceModel()
+
+        val vm = createViewModel(demoTalk = DemoTalk.EDGE_AND_SERVERLESS, onDeviceModel = model)
+
+        assertEquals(0, model.prepareCalls)
+        assertFalse(vm.showsOnDeviceModel)
+    }
+
+    @Test
+    fun stopRecording_withEdgeLlmResult_emitsSuccessWithRoute() = runTest {
+        val onDevice = VoiceResult.Proposed(
+            TRANSACTION, InferenceRoute.EDGE_LLM, TRANSCRIPT, StageTimings(total = LATENCY)
+        )
+        val vm = createViewModel(voiceResult = onDevice, demoTalk = DemoTalk.ON_DEVICE_LLM)
+
+        vm.startRecording()
+        vm.stopRecording()
+        advanceUntilIdle()
+
+        assertEquals(
+            VoiceRecorderUiState.Success(TRANSACTION, InferenceRoute.EDGE_LLM, TRANSCRIPT, LATENCY),
+            vm.uiState.value
+        )
+    }
 
     @Test
     fun stopRecording_withProposedResult_emitsSuccessWithRouteAndLatency() = runTest {
@@ -138,10 +220,55 @@ class RecorderViewModelTest {
 
         vm.confirmTransaction()
         runCurrent()
+        assertEquals(
+            VoiceRecorderUiState.Executing(TRANSACTION, InferenceRoute.EDGE, TRANSCRIPT, LATENCY),
+            vm.uiState.value
+        )
+
+        advanceUntilIdle()
+        assertEquals(
+            VoiceRecorderUiState.Executed(TRANSACTION, InferenceRoute.EDGE, TRANSCRIPT, LATENCY),
+            vm.uiState.value
+        )
+    }
+
+    @Test
+    fun talk1_confirmTransaction_executes() = runTest {
+        val vm = createViewModel(demoTalk = DemoTalk.AGENTS)
+        vm.startRecording()
+        vm.stopRecording()
+        advanceUntilIdle()
+
+        vm.confirmTransaction()
+        runCurrent()
         assertEquals(VoiceRecorderUiState.Executing(TRANSACTION), vm.uiState.value)
 
         advanceUntilIdle()
         assertEquals(VoiceRecorderUiState.Executed(TRANSACTION), vm.uiState.value)
+    }
+
+    @Test
+    fun confirmTransaction_withoutTranscript_executes() = runTest {
+        val cloudAudio = VoiceResult.Proposed(
+            TRANSACTION, InferenceRoute.CLOUD_AUDIO, transcript = null, StageTimings(total = LATENCY)
+        )
+        val vm = createViewModel(voiceResult = cloudAudio)
+        vm.startRecording()
+        vm.stopRecording()
+        advanceUntilIdle()
+
+        vm.confirmTransaction()
+        runCurrent()
+        assertEquals(
+            VoiceRecorderUiState.Executing(TRANSACTION, InferenceRoute.CLOUD_AUDIO, null, LATENCY),
+            vm.uiState.value
+        )
+
+        advanceUntilIdle()
+        assertEquals(
+            VoiceRecorderUiState.Executed(TRANSACTION, InferenceRoute.CLOUD_AUDIO, null, LATENCY),
+            vm.uiState.value
+        )
     }
 
     @Test
@@ -183,10 +310,20 @@ class RecorderViewModelTest {
         override fun getAmplitude(): Float = 0.5f
     }
 
+    /** Reports each [modelProgress] value [STEP_MS] apart (a first-use download), then returns [result]. */
     private class FakeSpeechToTransactionService(
-        private val result: VoiceResult
+        private val result: VoiceResult,
+        private val modelProgress: List<Float> = emptyList(),
     ) : SpeechToTransactionService {
-        override suspend fun parse(audio: FloatArray, onModelProgress: (Float) -> Unit): VoiceResult = result
+        override suspend fun parse(audio: FloatArray, onModelProgress: (Float) -> Unit): VoiceResult {
+            for (progress in modelProgress) {
+                onModelProgress(progress)
+                delay(STEP_MS)
+            }
+            delay(STEP_MS)
+            return result
+        }
+
         override fun release() = Unit
     }
 
@@ -195,6 +332,17 @@ class RecorderViewModelTest {
             delay(EXECUTION_DELAY_MS)
             return result
         }
+    }
+
+    private class FakeOnDeviceModel : OnDeviceTransactionModel {
+        var prepareCalls = 0
+        override val status: StateFlow<OnDeviceModelStatus> = MutableStateFlow(OnDeviceModelStatus.Loading)
+        override fun prepare() {
+            prepareCalls++
+        }
+
+        override suspend fun propose(transcript: String): Transaction? = null
+        override fun release() = Unit
     }
 
     private class FakeCloudConsentStore : CloudConsentStore {

@@ -2,8 +2,11 @@ package rs.smobile.speak2act.feature.voicerecorder.domain
 
 import kotlin.time.Duration
 
-/** Where a result was produced. */
-enum class InferenceRoute { EDGE, CLOUD_TEXT, CLOUD_AUDIO }
+/**
+ * Where a result was produced: [EDGE] = the local grammar, [EDGE_LLM] = the on-device language model,
+ * [CLOUD_TEXT] = Gemini on the transcript, [CLOUD_AUDIO] = Gemini on the recording.
+ */
+enum class InferenceRoute { EDGE, EDGE_LLM, CLOUD_TEXT, CLOUD_AUDIO }
 
 /** Time spent in each stage; null = the stage didn't run. */
 data class StageTimings(
@@ -11,6 +14,7 @@ data class StageTimings(
     val grammar: Duration? = null,
     val cloud: Duration? = null,
     val total: Duration = Duration.ZERO,
+    val llm: Duration? = null,
 )
 
 /** Outcome of one spoken command, whichever route produced it. */

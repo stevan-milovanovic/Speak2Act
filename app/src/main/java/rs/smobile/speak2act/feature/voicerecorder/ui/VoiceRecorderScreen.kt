@@ -48,9 +48,12 @@ import rs.smobile.speak2act.core.theme.BackgroundDarkTop
 import rs.smobile.speak2act.core.theme.BrandBlueSoft
 import rs.smobile.speak2act.core.theme.Speak2ActTheme
 import rs.smobile.speak2act.feature.voicerecorder.domain.InferenceRoute
+import rs.smobile.speak2act.feature.voicerecorder.domain.OnDeviceModelStatus
 import rs.smobile.speak2act.feature.voicerecorder.domain.Transaction
 import rs.smobile.speak2act.feature.voicerecorder.domain.TransactionAction
+import rs.smobile.speak2act.feature.voicerecorder.ui.component.ConfettiBurst
 import rs.smobile.speak2act.feature.voicerecorder.ui.component.DetectionOutcome
+import rs.smobile.speak2act.feature.voicerecorder.ui.component.OnDeviceModelStatusLine
 import rs.smobile.speak2act.feature.voicerecorder.ui.component.RecordButton
 import rs.smobile.speak2act.feature.voicerecorder.ui.component.Waveform
 import java.math.BigDecimal
@@ -68,7 +71,8 @@ fun VoiceRecorderScreen(
     onCancelClick: () -> Unit = {},
     cloudConsent: Boolean? = false,
     onCloudConsentAnswer: (Boolean) -> Unit = {},
-    showHybridDetails: Boolean = true
+    showHybridDetails: Boolean = true,
+    onDeviceModelStatus: OnDeviceModelStatus? = null
 ) {
     val context = LocalContext.current
     var permissionGranted by remember { mutableStateOf(getAudioPermissionState(context)) }
@@ -89,9 +93,16 @@ fun VoiceRecorderScreen(
         if (showHybridDetails && cloudConsent == null) {
             CloudConsentDialog(onCloudConsentAnswer)
         }
-        RecorderContent(
-            modifier, innerPadding, uiState, isRecording, amplitudes, onRecordClick, onConfirmClick, onCancelClick
-        )
+        Box(Modifier.fillMaxSize()) {
+            RecorderContent(
+                modifier, innerPadding, uiState, isRecording, amplitudes, onRecordClick, onConfirmClick, onCancelClick,
+                onDeviceModelStatus
+            )
+            // Over the whole screen, once per executed transaction.
+            if (uiState is VoiceRecorderUiState.Executed) {
+                ConfettiBurst(Modifier.matchParentSize())
+            }
+        }
     }
 }
 
@@ -105,6 +116,7 @@ private fun RecorderContent(
     onRecordClick: () -> Unit,
     onConfirmClick: () -> Unit,
     onCancelClick: () -> Unit,
+    onDeviceModelStatus: OnDeviceModelStatus?,
 ) {
     val timerSeconds = rememberRecordingTimer(isRecording)
 
@@ -133,6 +145,12 @@ private fun RecorderContent(
                 enabled = uiState !is VoiceRecorderUiState.Loading && uiState !is VoiceRecorderUiState.Executing,
                 onRecordButtonTap = onRecordClick
             )
+        }
+
+        // Talk 3: the on-device language model's status (null = hidden; nothing while idle). Only while
+        // DetectionOutcome shows nothing (Initial): the two never share the screen.
+        if (onDeviceModelStatus != null && uiState == VoiceRecorderUiState.Initial) {
+            OnDeviceModelStatusLine(onDeviceModelStatus, horizontalPaddingModifier.padding(top = 8.dp))
         }
 
         if (isRecording) {
@@ -219,7 +237,7 @@ private val PREVIEW_TRANSACTION = Transaction(
 )
 
 @Composable
-private fun PreviewScreen(uiState: VoiceRecorderUiState) {
+private fun PreviewScreen(uiState: VoiceRecorderUiState, onDeviceModelStatus: OnDeviceModelStatus? = null) {
     Speak2ActTheme {
         val backgroundGradient = Brush.linearGradient(
             colors = listOf(BackgroundDarkTop, BackgroundDarkBottom),
@@ -232,7 +250,8 @@ private fun PreviewScreen(uiState: VoiceRecorderUiState) {
             uiState = uiState,
             isRecording = false,
             amplitudes = emptyList(),
-            onRecordClick = {}
+            onRecordClick = {},
+            onDeviceModelStatus = onDeviceModelStatus
         )
     }
 }
@@ -302,4 +321,54 @@ private fun ExecutingPreview() {
 @Composable
 private fun ExecutedPreview() {
     PreviewScreen(VoiceRecorderUiState.Executed(PREVIEW_TRANSACTION))
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun EdgeLlmSuccessPreview() {
+    PreviewScreen(
+        VoiceRecorderUiState.Success(
+            transaction = Transaction(
+                action = TransactionAction.SEND,
+                amount = BigDecimal("10.00"),
+                currency = "CHF",
+                receiverName = "Stefan",
+                message = "pizza"
+            ),
+            route = InferenceRoute.EDGE_LLM,
+            heard = "I owe Stefan ten francs for the pizza.",
+            latency = 1200.milliseconds
+        ),
+        onDeviceModelStatus = OnDeviceModelStatus.Ready   // hidden: a result is on screen
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnDeviceModelReadyPreview() {
+    PreviewScreen(VoiceRecorderUiState.Initial, OnDeviceModelStatus.Ready)
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnDeviceModelDownloadingPreview() {
+    PreviewScreen(VoiceRecorderUiState.Initial, OnDeviceModelStatus.Downloading(0.42f))
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnDeviceModelLoadingPreview() {
+    PreviewScreen(VoiceRecorderUiState.Initial, OnDeviceModelStatus.Loading)
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnDeviceModelMissingPreview() {
+    PreviewScreen(VoiceRecorderUiState.Initial, OnDeviceModelStatus.Missing)
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnDeviceModelUnavailablePreview() {
+    PreviewScreen(VoiceRecorderUiState.Initial, OnDeviceModelStatus.Unavailable("not_published"))
 }

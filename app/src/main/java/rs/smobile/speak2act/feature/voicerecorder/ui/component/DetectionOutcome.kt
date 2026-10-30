@@ -44,6 +44,9 @@ private val EdgeTeal = Color(0xFF2DD4BF)
 private val CloudIndigo = Color(0xFF818CF8)
 private val CloudAudioBlue = Color(0xFF60A5FA)
 
+/** The colour the talk-3 deck uses for the on-device language model (badge and status line). */
+internal val OnDeviceLlmPink = Color(0xFFF472B6)
+
 @Composable
 fun DetectionOutcome(
     modifier: Modifier = Modifier,
@@ -115,14 +118,8 @@ fun DetectionOutcome(
         is VoiceRecorderUiState.Executed -> Column(modifier = modifier) {
             TransactionCard(uiState.transaction, uiState.route, uiState.latency)
             Spacer(Modifier.size(16.dp))
-            Text(
-                text = successMessage(uiState.transaction),
-                modifier = Modifier.fillMaxWidth(),
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.headlineSmall,
-                color = BrandBlue
-            )
-            Spacer(Modifier.size(4.dp))
+            SuccessBanner(successMessage(uiState.transaction))
+            Spacer(Modifier.size(16.dp))
         }
     }
 }
@@ -175,11 +172,15 @@ private fun TransactionCard(
     }
 }
 
-/** "📱 On-device · 0.8 s" (teal) or "☁️ Cloud fallback · 1.9 s" / "☁️ Cloud (audio) · 2.4 s" (indigo). */
+/**
+ * "📱 On-device · 0.8 s" (teal), "🧠 On-device LLM · 1.2 s" (pink) or "☁️ Cloud fallback · 1.9 s" /
+ * "☁️ Cloud (audio) · 2.4 s" (indigo).
+ */
 @Composable
 private fun RouteBadge(route: InferenceRoute, latency: Duration?) {
     val (label, color) = when (route) {
         InferenceRoute.EDGE -> stringResource(R.string.route_on_device) to EdgeTeal
+        InferenceRoute.EDGE_LLM -> stringResource(R.string.route_on_device_llm) to OnDeviceLlmPink
         InferenceRoute.CLOUD_TEXT -> stringResource(R.string.route_cloud_fallback) to CloudIndigo
         InferenceRoute.CLOUD_AUDIO -> stringResource(R.string.route_cloud_audio) to CloudAudioBlue
     }
@@ -274,6 +275,10 @@ private fun RouteBadgePreview() {
             RouteBadge(
                 InferenceRoute.EDGE,
                 Duration.parse("2.3s")
+            )
+            RouteBadge(
+                InferenceRoute.EDGE_LLM,
+                Duration.parse("2.9s")
             )
             RouteBadge(
                 InferenceRoute.CLOUD_TEXT,

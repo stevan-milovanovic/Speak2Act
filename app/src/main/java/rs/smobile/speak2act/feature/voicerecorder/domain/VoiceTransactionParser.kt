@@ -30,6 +30,41 @@ class VoiceTransactionParser @Inject constructor() {
     }
 
     /**
+     * Every amount spoken anywhere in [transcript], in order, one entry per occurrence ("10 to Ana and 10 to Bo" →
+     * [10, 10]) — digits ("12.50", "1'000") or English number words ("twenty-five"), stripped of trailing zeros.
+     * Unreadable numbers are skipped. Used to fact-check proposals from a language model.
+     */
+    fun spokenAmounts(transcript: String): List<BigDecimal> {
+        val tokens = tokenize(transcript)
+        val amounts = mutableListOf<BigDecimal>()
+        var index = 0
+        while (index < tokens.size) {
+            val token = tokens[index]
+            if (token.any { it.isDigit() }) {
+                numericAmount(token)?.let { amounts += it.stripTrailingZeros() }
+                index++
+                continue
+            }
+            val group = numberWordGroup(tokens, index)
+            if (group != null) {
+                group.value?.let { amounts += it.stripTrailingZeros() }
+                index = group.end
+                continue
+            }
+            index++
+        }
+        return amounts
+    }
+
+    /** ISO codes of every currency word or symbol in [transcript] ("francs" → CHF, "€" → EUR). */
+    fun spokenCurrencies(transcript: String): Set<String> =
+        tokenize(transcript).mapNotNull { CurrencyCodes.fromWord(it.cleaned()) }.toSet()
+
+    /** Whether [transcript] names a currency the app doesn't support ("35 yen"). */
+    fun mentionsUnsupportedCurrency(transcript: String): Boolean =
+        tokenize(transcript).any { CurrencyCodes.isUnsupported(it.cleaned()) }
+
+    /**
      * Normalizes number formatting, then splits on whitespace, keeping the original casing so the
      * message can be kept verbatim.
      *

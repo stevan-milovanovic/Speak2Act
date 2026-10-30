@@ -1,0 +1,40 @@
+{
+  "description": "Prepares a money transaction for the user to confirm.",
+  "name": "executeTransaction",
+  "parameters": {
+    "properties": {
+      "action": {
+        "description": "Type of the transaction.",
+        "enum": [
+          "pay",
+          "request",
+          "split"
+        ],
+        "type": "string"
+      },
+      "amount": {
+        "description": "Amount of the transaction.",
+        "type": "number"
+      },
+      "currency": {
+        "description": "Currency of the transaction, e.g. CHF or EUR.",
+        "type": "string"
+      },
+      "description": {
+        "description": "The reason for the transaction.",
+        "type": "string"
+      },
+      "person": {
+        "description": "Contact to whom the transaction is addressed.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "action",
+      "amount",
+      "currency",
+      "person"
+    ],
+    "type": "object"
+  }
+}

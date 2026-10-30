@@ -1,5 +1,7 @@
 package rs.smobile.speak2act.feature.voicerecorder.data.whisper
 
+import rs.smobile.speak2act.core.model.ModelSpec
+
 /**
  * Descriptor for the on-demand Whisper model.
  *
@@ -16,4 +18,10 @@ object WhisperModel {
         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q8_0.bin"
     const val SIZE_BYTES = 43_537_433L
     const val SHA_256 = "c2085835d3f50733e2ff6e4b41ae8a2b8d8110461e18821b09a15c40c42d1cca"
+
+    /** The pinned file for [rs.smobile.speak2act.core.model.ModelDownloader]; older `ggml-*.bin` files are stale. */
+    val spec = ModelSpec(
+        FILE_NAME, URL, SIZE_BYTES, SHA_256,
+        isStale = { it.startsWith("ggml-") && it.endsWith(".bin") },
+    )
 }

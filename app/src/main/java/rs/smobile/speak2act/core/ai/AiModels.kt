@@ -7,12 +7,13 @@ import com.google.firebase.ai.type.generationConfig
 
 object AiModels {
 
-    const val EXECUTE_TRANSACTION_FUNCTION_NAME = "executeTransaction"
-    const val ACTION_PARAM = "action"
-    const val AMOUNT_PARAM = "amount"
-    const val CURRENCY_PARAM = "currency"
-    const val PERSON_PARAM = "person"
-    const val DESCRIPTION_PARAM = "description"
+    // Aliases of the shared contract, so the mapper and the Gemini service keep their imports.
+    const val EXECUTE_TRANSACTION_FUNCTION_NAME = TransactionContract.FUNCTION_NAME
+    const val ACTION_PARAM = TransactionContract.ACTION_PARAM
+    const val AMOUNT_PARAM = TransactionContract.AMOUNT_PARAM
+    const val CURRENCY_PARAM = TransactionContract.CURRENCY_PARAM
+    const val PERSON_PARAM = TransactionContract.PERSON_PARAM
+    const val DESCRIPTION_PARAM = TransactionContract.DESCRIPTION_PARAM
 
     val SpeechToTransaction = AiModel(
         systemInstruction = """
@@ -32,13 +33,15 @@ object AiModels {
                 listOf(
                     FunctionDeclaration(
                         name = EXECUTE_TRANSACTION_FUNCTION_NAME,
-                        description = "Prepares a money transaction for the user to confirm.",
+                        description = TransactionContract.FUNCTION_DESCRIPTION,
                         parameters = mapOf(
-                            ACTION_PARAM to Schema.enumeration(listOf("pay", "request", "split"), "Type of the transaction."),
-                            AMOUNT_PARAM to Schema.double("Amount of the transaction."),
-                            CURRENCY_PARAM to Schema.string("Currency of the transaction, e.g. CHF or EUR."),
-                            PERSON_PARAM to Schema.string("Contact to whom the transaction is addressed."),
-                            DESCRIPTION_PARAM to Schema.string("The reason for the transaction."),
+                            ACTION_PARAM to Schema.enumeration(
+                                TransactionContract.ACTIONS, TransactionContract.ACTION_DESCRIPTION
+                            ),
+                            AMOUNT_PARAM to Schema.double(TransactionContract.AMOUNT_DESCRIPTION),
+                            CURRENCY_PARAM to Schema.string(TransactionContract.CURRENCY_DESCRIPTION),
+                            PERSON_PARAM to Schema.string(TransactionContract.PERSON_DESCRIPTION),
+                            DESCRIPTION_PARAM to Schema.string(TransactionContract.REASON_DESCRIPTION),
                         ),
                         optionalParameters = listOf(DESCRIPTION_PARAM),
                     )

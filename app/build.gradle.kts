@@ -11,11 +11,16 @@ val actionFigureTestImage: String = localProps.getProperty("ACTION_FIGURE_TEST_I
 val meshyApiKey: String = localProps.getProperty("MESHY_API_KEY", "")
 
 // Which conference talk the demo build shows: 1 = "AI Agents on Android" (raw audio → Gemini),
-// 2 = "Edge AI and Serverless" (hybrid on-device/cloud). Set DEMO_TALK in local.properties or pass
-// -PdemoTalk=1 on the command line. Defaults to talk 2.
+// 2 = "Edge AI and Serverless" (hybrid on-device/cloud), 3 = "Running AI on Your Phone" (2 + an on-device
+// language model). Set DEMO_TALK in local.properties or pass -PdemoTalk=3. Defaults to talk 2.
 val demoTalk: String = (findProperty("demoTalk") as String?)
-    ?: localProps.getProperty("DEMO_TALK", "2")
-require(demoTalk == "1" || demoTalk == "2") { "DEMO_TALK must be 1 or 2, was '$demoTalk'" }
+    ?: localProps.getProperty("DEMO_TALK", "3")
+require(demoTalk in setOf("1", "2", "3")) { "DEMO_TALK must be 1, 2 or 3, was '$demoTalk'" }
+
+// Which on-device model talk 3 loads: tuned (default), base (untuned FunctionGemma, for the before/after
+// screenshots) or gemma4 (Gemma 4 E2B, 2.6 GB, for the generalist comparison). LOCAL_LLM / -PlocalLlm=…
+val localLlm: String = (findProperty("localLlm") as String?) ?: localProps.getProperty("LOCAL_LLM", "tuned")
+require(localLlm in setOf("tuned", "base", "gemma4")) { "LOCAL_LLM must be tuned, base or gemma4, was '$localLlm'" }
 
 plugins {
     alias(libs.plugins.android.application)
@@ -53,6 +58,7 @@ android {
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"$cloudinaryCloudName\"")
         buildConfigField("String", "MESHY_API_KEY", "\"$meshyApiKey\"")
         buildConfigField("int", "DEMO_TALK", demoTalk)
+        buildConfigField("String", "LOCAL_LLM", "\"$localLlm\"")
 
         externalNativeBuild {
             cmake {
@@ -138,6 +144,8 @@ dependencies {
     implementation(libs.coil.compose)
     // Filament
     implementation(libs.filament.utils.android)
+    // LiteRT-LM: on-device language model
+    implementation(libs.litertlm.android)
     // Test
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

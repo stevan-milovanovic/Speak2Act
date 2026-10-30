@@ -2,7 +2,9 @@ package rs.smobile.speak2act.feature.voicerecorder
 
 import java.math.BigDecimal
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import rs.smobile.speak2act.feature.voicerecorder.domain.DEFAULT_CURRENCY
 import rs.smobile.speak2act.feature.voicerecorder.domain.Transaction
@@ -338,6 +340,58 @@ class VoiceTransactionParserTest {
     @Test
     fun regression_recognizesEuroSymbol() {
         assertAmountAndCurrency("5", "EUR", "Send €5 to Ana")
+    }
+
+    // --- Fact-checking helpers (same vectors as ml/functiongemma/src/test_s2a_data.py) ---
+
+    @Test
+    fun spokenAmounts_findsDigitsAndWordsAcrossTheSentence_oncePerOccurrence() {
+        assertSpokenAmounts(listOf("10"), "I owe Stefan ten francs for the pizza.")
+        assertSpokenAmounts(listOf("25"), "Send twenty-five francs to Stefan")
+        assertSpokenAmounts(listOf("25"), "send twenty five to ana")
+        assertSpokenAmounts(listOf("12.5"), "Pay 12.50 for coffee")
+        assertSpokenAmounts(listOf("12.5"), "Pay 12,50")
+        assertSpokenAmounts(listOf("1000", "20"), "Send 1'000 to Ana and 20 to Bo")
+        assertSpokenAmounts(listOf("10", "10"), "Send 10 to Ana and 10 to Bo")
+        assertSpokenAmounts(listOf("250"), "two hundred and fifty bucks")
+        assertSpokenAmounts(listOf("1500"), "one thousand five hundred francs")
+        assertSpokenAmounts(listOf("10"), "Send ten, to Stefan")
+        assertSpokenAmounts(listOf("5"), "€5 to Ana")
+        assertSpokenAmounts(listOf("20", "5"), "twenty and five")
+        assertSpokenAmounts(listOf("0"), "zero")
+    }
+
+    @Test
+    fun spokenAmounts_failsClosedLikeParse() {
+        assertSpokenAmounts(emptyList(), "five six francs")
+        assertSpokenAmounts(emptyList(), "twenty twenty")
+        assertSpokenAmounts(emptyList(), "abc123")
+        assertSpokenAmounts(emptyList(), "pay 12.501 francs")
+        assertSpokenAmounts(emptyList(), "ten thousand francs")   // over 9,999
+        assertSpokenAmounts(emptyList(), "Remind me to call Stefan")
+    }
+
+    @Test
+    fun spokenCurrencies_findsEveryCurrency() {
+        assertEquals(setOf("CHF"), parser.spokenCurrencies("I owe Stefan ten francs"))
+        assertEquals(setOf("CHF"), parser.spokenCurrencies("Pay Ana 10 fr."))
+        assertEquals(setOf("EUR"), parser.spokenCurrencies("€5 to Ana"))
+        assertEquals(setOf("USD"), parser.spokenCurrencies("25 bucks from Tamara"))
+        assertEquals(emptySet<String>(), parser.spokenCurrencies("10 Franken für die Pizza"))
+        assertEquals(setOf("EUR", "CHF"), parser.spokenCurrencies("Send 10 euros or francs to Ana"))
+        assertEquals(emptySet<String>(), parser.spokenCurrencies("send 5 to Ana"))
+    }
+
+    @Test
+    fun mentionsUnsupportedCurrency_onlyForCurrencyWords() {
+        assertTrue(parser.mentionsUnsupportedCurrency("Request 35 yen from David."))
+        assertTrue(parser.mentionsUnsupportedCurrency("Schick Stefan 10 Pfund"))
+        assertFalse(parser.mentionsUnsupportedCurrency("I won 35 francs"))
+        assertFalse(parser.mentionsUnsupportedCurrency("Send 10 francs to Stefan"))
+    }
+
+    private fun assertSpokenAmounts(expected: List<String>, transcript: String) {
+        assertEquals(transcript, expected, parser.spokenAmounts(transcript).map { it.toPlainString() })
     }
 
     private fun assertAmount(expected: String, transcript: String) {

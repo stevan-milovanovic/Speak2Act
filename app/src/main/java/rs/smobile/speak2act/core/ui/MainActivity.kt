@@ -163,6 +163,7 @@ private fun VoiceRoute(
     val amplitudes by recorderViewModel.amplitudes.collectAsStateWithLifecycle()
     val isRecording by recorderViewModel.isRecording.collectAsStateWithLifecycle()
     val cloudConsent by recorderViewModel.cloudConsent.collectAsStateWithLifecycle()
+    val onDeviceModelStatus by recorderViewModel.onDeviceModelStatus.collectAsStateWithLifecycle()
 
     BackHandler {
         recorderViewModel.clearData()
@@ -181,7 +182,8 @@ private fun VoiceRoute(
         onCancelClick = recorderViewModel::cancelTransaction,
         cloudConsent = cloudConsent,
         onCloudConsentAnswer = recorderViewModel::setCloudConsent,
-        showHybridDetails = recorderViewModel.showsHybridDetails
+        showHybridDetails = recorderViewModel.showsHybridDetails,
+        onDeviceModelStatus = onDeviceModelStatus.takeIf { recorderViewModel.showsOnDeviceModel }
     )
 }
 

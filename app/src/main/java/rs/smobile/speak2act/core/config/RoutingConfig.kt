@@ -31,6 +31,9 @@ interface RoutingConfig {
 
     /** Effective route: EDGE_ONLY until the user has granted cloud consent. */
     val route: VoiceRoutingMode
+
+    /** Whether the on-device language model runs between the grammar and the cloud. */
+    val localLlmEnabled: Boolean
 }
 
 /** Parses a [VoiceRoutingMode] name; unknown or blank values fall back to [DEFAULT_VOICE_ROUTE]. */
@@ -41,7 +44,8 @@ fun parseRoute(value: String?): VoiceRoutingMode =
  * [RoutingConfig] with built-in defaults.
  *
  * TODO(H4): replace with a Remote Config-backed implementation (`FirebaseRoutingConfig`, keys
- *  [MODEL_NAME] and [VOICE_ROUTE]) once the `firebase-config` dependency is approved.
+ *  [MODEL_NAME] and [VOICE_ROUTE], later also `local_llm_enabled`) once the `firebase-config`
+ *  dependency is approved.
  */
 @Singleton
 class DefaultRoutingConfig @Inject constructor(
@@ -53,6 +57,7 @@ class DefaultRoutingConfig @Inject constructor(
         get() = when (demoTalk) {
             DemoTalk.AGENTS -> TALK_1_MODEL_NAME
             DemoTalk.EDGE_AND_SERVERLESS -> DEFAULT_MODEL_NAME
+            DemoTalk.ON_DEVICE_LLM -> DEFAULT_MODEL_NAME
         }
 
     override val route: VoiceRoutingMode
@@ -62,4 +67,6 @@ class DefaultRoutingConfig @Inject constructor(
             consent.granted.value != true -> VoiceRoutingMode.EDGE_ONLY
             else -> DEFAULT_VOICE_ROUTE
         }
+
+    override val localLlmEnabled: Boolean get() = demoTalk.usesOnDeviceLlm
 }

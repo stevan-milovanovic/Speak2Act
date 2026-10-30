@@ -1,5 +1,7 @@
 package rs.smobile.speak2act.feature.voicerecorder
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -13,6 +15,9 @@ import rs.smobile.speak2act.core.network.NetworkMonitor
 import rs.smobile.speak2act.feature.voicerecorder.data.HybridSpeechToTransactionService
 import rs.smobile.speak2act.feature.voicerecorder.domain.CloudTransactionService
 import rs.smobile.speak2act.feature.voicerecorder.domain.InferenceRoute
+import rs.smobile.speak2act.feature.voicerecorder.domain.OnDeviceModelStatus
+import rs.smobile.speak2act.feature.voicerecorder.domain.OnDeviceTransactionModel
+import rs.smobile.speak2act.feature.voicerecorder.domain.ProposalGuard
 import rs.smobile.speak2act.feature.voicerecorder.domain.Transaction
 import rs.smobile.speak2act.feature.voicerecorder.domain.TransactionAction
 import rs.smobile.speak2act.feature.voicerecorder.domain.Transcriber
@@ -25,19 +30,51 @@ class HybridSpeechToTransactionServiceTest {
     private companion object {
         private const val EDGE_SENTENCE = "Request 10 euros from Marija for the taxi bill."
         private const val CLOUD_SENTENCE = "I owe Stefan ten francs for the pizza."
+        private const val LLM_SENTENCE = CLOUD_SENTENCE
         private val AUDIO = FloatArray(16_000)
         private val CLOUD_TRANSACTION =
+            Transaction(TransactionAction.SEND, BigDecimal("10"), "CHF", "Stefan", "pizza")
+        private val LLM_TRANSACTION =
             Transaction(TransactionAction.SEND, BigDecimal("10"), "CHF", "Stefan", "pizza")
     }
 
     private class FakeTranscriber(private val transcript: String) : Transcriber {
         var calls = 0
+        var releaseCalls = 0
         override suspend fun transcribe(audio: FloatArray, onModelProgress: (Float) -> Unit): String {
             calls++
             return transcript
         }
 
-        override fun release() = Unit
+        override fun release() {
+            releaseCalls++
+        }
+    }
+
+    private class FakeOnDeviceModel(
+        private val result: Transaction?,
+        private val throws: Boolean = false,
+    ) : OnDeviceTransactionModel {
+        val transcripts = mutableListOf<String>()
+        var prepareCalls = 0
+        var releaseCalls = 0
+        val proposeCalls get() = transcripts.size
+
+        override val status: StateFlow<OnDeviceModelStatus> = MutableStateFlow(OnDeviceModelStatus.Ready)
+
+        override fun prepare() {
+            prepareCalls++
+        }
+
+        override suspend fun propose(transcript: String): Transaction? {
+            transcripts += transcript
+            if (throws) throw IllegalStateException("LiteRT-LM failed")
+            return result
+        }
+
+        override fun release() {
+            releaseCalls++
+        }
     }
 
     private class FakeCloud : CloudTransactionService {
@@ -57,12 +94,16 @@ class HybridSpeechToTransactionServiceTest {
         }
     }
 
-    private class FakeRouting(override val route: VoiceRoutingMode) : RoutingConfig {
+    private class FakeRouting(
+        override val route: VoiceRoutingMode,
+        override val localLlmEnabled: Boolean = false,
+    ) : RoutingConfig {
         override val modelName = "test-model"
     }
 
     private class FakeNetwork(private val online: Boolean) : NetworkMonitor {
         override fun isOnline() = online
+        override fun isUnmetered() = online
     }
 
     private class FakeLogger : RouteLogger {
@@ -79,11 +120,15 @@ class HybridSpeechToTransactionServiceTest {
         transcriber: Transcriber,
         route: VoiceRoutingMode = VoiceRoutingMode.EDGE_THEN_CLOUD,
         online: Boolean = true,
+        localLlm: Boolean = false,
+        model: OnDeviceTransactionModel = FakeOnDeviceModel(null),
     ) = HybridSpeechToTransactionService(
         whisper = transcriber,
         grammar = VoiceTransactionParser(),
+        onDeviceModel = model,
+        guard = ProposalGuard(VoiceTransactionParser()),
         cloud = cloud,
-        routing = FakeRouting(route),
+        routing = FakeRouting(route, localLlm),
         network = FakeNetwork(online),
         logger = logger,
     )
@@ -172,5 +217,162 @@ class HybridSpeechToTransactionServiceTest {
         assertEquals(1, logger.messages.size)
         assertTrue(logger.messages.single().contains("source=EDGE"))
         assertTrue(!logger.messages.single().contains("Marija"))
+    }
+
+    // --- On-device language model stage (talk 3) ---
+
+    @Test
+    fun grammarHit_neverCallsTheOnDeviceModel() = runTest {
+        val model = FakeOnDeviceModel(LLM_TRANSACTION)
+
+        val result = service(FakeTranscriber(EDGE_SENTENCE), localLlm = true, model = model).parse(AUDIO) {}
+
+        assertEquals(InferenceRoute.EDGE, (result as VoiceResult.Proposed).source)
+        assertEquals(0, model.proposeCalls)
+    }
+
+    @Test
+    fun grammarMiss_groundedProposal_returnsEdgeLlm_withoutCloudCall() = runTest {
+        for ((route, online) in listOf(
+            VoiceRoutingMode.EDGE_THEN_CLOUD to true,
+            VoiceRoutingMode.EDGE_THEN_CLOUD to false,
+            VoiceRoutingMode.EDGE_ONLY to true,
+        )) {
+            val model = FakeOnDeviceModel(LLM_TRANSACTION)
+
+            val result = service(FakeTranscriber(LLM_SENTENCE), route, online, localLlm = true, model = model)
+                .parse(AUDIO) {}
+
+            result as VoiceResult.Proposed
+            assertEquals(InferenceRoute.EDGE_LLM, result.source)
+            assertEquals(LLM_SENTENCE, result.transcript)
+            assertEquals(LLM_TRANSACTION, result.transaction)
+            assertEquals(listOf(LLM_SENTENCE), model.transcripts)
+        }
+        assertTrue(cloud.transcripts.isEmpty())
+    }
+
+    @Test
+    fun inventedAmount_isRejected_thenCloudOnline_orNotUnderstoodOffline() = runTest {
+        val invented = LLM_TRANSACTION.copy(amount = BigDecimal("100"))
+
+        val online = service(FakeTranscriber(LLM_SENTENCE), localLlm = true, model = FakeOnDeviceModel(invented))
+            .parse(AUDIO) {}
+        assertEquals(InferenceRoute.CLOUD_TEXT, (online as VoiceResult.Proposed).source)
+
+        val offline = service(
+            FakeTranscriber(LLM_SENTENCE), online = false, localLlm = true, model = FakeOnDeviceModel(invented)
+        ).parse(AUDIO) {}
+        assertTrue(offline is VoiceResult.NotUnderstood)
+
+        assertTrue(logger.messages.any { it.contains("llm_rejected reason=amount_not_spoken") })
+        assertTrue(logger.messages.none { it.contains("Stefan") })
+    }
+
+    @Test
+    fun twoAmounts_areRejectedAsAmbiguous() = runTest {
+        val transfer = "Transfer 100 francs to Stefan and 50 to Maria."
+        val proposal = LLM_TRANSACTION.copy(amount = BigDecimal("100"), message = null)
+
+        val result = service(FakeTranscriber(transfer), online = false, localLlm = true, model = FakeOnDeviceModel(proposal))
+            .parse(AUDIO) {}
+
+        assertTrue(result is VoiceResult.NotUnderstood)
+        assertTrue(logger.messages.any { it.contains("llm_rejected reason=amount_ambiguous") })
+    }
+
+    @Test
+    fun equalAmountsForTwoPeople_areRejectedAsAmbiguous() = runTest {
+        val owe = "I owe Ana 10 francs and Bo 10 francs."
+        val proposal = Transaction(TransactionAction.SEND, BigDecimal("10"), "CHF", "Ana")
+
+        val result = service(FakeTranscriber(owe), online = false, localLlm = true, model = FakeOnDeviceModel(proposal))
+            .parse(AUDIO) {}
+
+        assertTrue(result is VoiceResult.NotUnderstood)
+        assertTrue(logger.messages.any { it.contains("llm_rejected reason=amount_ambiguous") })
+    }
+
+    @Test
+    fun currencyChecks_rejectUnsupportedAndMismatchedCurrencies() = runTest {
+        val yen = Transaction(TransactionAction.SEND, BigDecimal("35"), "CHF", "David")
+        service(FakeTranscriber("I owe David 35 yen."), online = false, localLlm = true, model = FakeOnDeviceModel(yen))
+            .parse(AUDIO) {}
+        assertTrue(logger.messages.any { it.contains("llm_rejected reason=currency_unsupported") })
+
+        val euros = LLM_TRANSACTION.copy(currency = "EUR")
+        service(FakeTranscriber("I owe Stefan 10 for the pizza."), online = false, localLlm = true, model = FakeOnDeviceModel(euros))
+            .parse(AUDIO) {}
+        assertTrue(logger.messages.any { it.contains("llm_rejected reason=currency_mismatch") })
+    }
+
+    @Test
+    fun noProposal_offlineNotUnderstood_onlineCloudText() = runTest {
+        val offline = service(FakeTranscriber(LLM_SENTENCE), online = false, localLlm = true, model = FakeOnDeviceModel(null))
+            .parse(AUDIO) {}
+        assertTrue(offline is VoiceResult.NotUnderstood)
+
+        val online = service(FakeTranscriber(LLM_SENTENCE), localLlm = true, model = FakeOnDeviceModel(null))
+            .parse(AUDIO) {}
+        assertEquals(InferenceRoute.CLOUD_TEXT, (online as VoiceResult.Proposed).source)
+    }
+
+    @Test
+    fun modelError_isTreatedLikeNoProposal_andLogged() = runTest {
+        val result = service(
+            FakeTranscriber(LLM_SENTENCE), online = false, localLlm = true,
+            model = FakeOnDeviceModel(LLM_TRANSACTION, throws = true)
+        ).parse(AUDIO) {}
+
+        assertTrue(result is VoiceResult.NotUnderstood)
+        assertTrue(logger.messages.any { it.contains("llm_failed") })
+    }
+
+    @Test
+    fun localLlmDisabled_neverCallsTheModel() = runTest {
+        val model = FakeOnDeviceModel(LLM_TRANSACTION)
+
+        val result = service(FakeTranscriber(LLM_SENTENCE), online = false, localLlm = false, model = model)
+            .parse(AUDIO) {}
+
+        assertTrue(result is VoiceResult.NotUnderstood)
+        assertEquals(0, model.proposeCalls)
+    }
+
+    @Test
+    fun llmTiming_isSetOnlyWhenTheStageRan() = runTest {
+        val edge = service(FakeTranscriber(EDGE_SENTENCE), localLlm = true).parse(AUDIO) {}
+        assertNull(edge.timings.llm)
+
+        val llm = service(FakeTranscriber(LLM_SENTENCE), localLlm = true, model = FakeOnDeviceModel(LLM_TRANSACTION))
+            .parse(AUDIO) {}
+        assertNotNull(llm.timings.llm)
+        assertNull(llm.timings.cloud)
+
+        val talk2 = service(FakeTranscriber(LLM_SENTENCE), localLlm = false).parse(AUDIO) {}
+        assertNull(talk2.timings.llm)
+    }
+
+    @Test
+    fun routeLog_containsTheLlmStage() = runTest {
+        service(FakeTranscriber(LLM_SENTENCE), localLlm = true, model = FakeOnDeviceModel(LLM_TRANSACTION))
+            .parse(AUDIO) {}
+
+        val line = logger.messages.single()
+        assertTrue(line.contains("source=EDGE_LLM"))
+        assertTrue(line.contains(" llm="))
+        assertTrue(!line.contains("Stefan"))
+    }
+
+    @Test
+    fun release_releasesWhisperAndTheOnDeviceModel() {
+        val transcriber = FakeTranscriber(EDGE_SENTENCE)
+        val model = FakeOnDeviceModel(null)
+
+        service(transcriber, localLlm = true, model = model).release()
+
+        assertEquals(1, transcriber.releaseCalls)
+        assertEquals(1, model.releaseCalls)
+        assertEquals(0, model.prepareCalls)
     }
 }

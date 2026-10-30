@@ -16,6 +16,8 @@ import rs.smobile.speak2act.core.config.DemoTalk
 import rs.smobile.speak2act.core.privacy.CloudConsentStore
 import rs.smobile.speak2act.feature.voicerecorder.data.WhisperAudioRecorder
 import rs.smobile.speak2act.feature.voicerecorder.domain.AudioRecorder
+import rs.smobile.speak2act.feature.voicerecorder.domain.OnDeviceModelStatus
+import rs.smobile.speak2act.feature.voicerecorder.domain.OnDeviceTransactionModel
 import rs.smobile.speak2act.feature.voicerecorder.domain.SpeechToTransactionService
 import rs.smobile.speak2act.feature.voicerecorder.domain.TransactionExecutor
 import rs.smobile.speak2act.feature.voicerecorder.domain.VoiceResult
@@ -28,7 +30,8 @@ class RecorderViewModel @Inject constructor(
     private val speechToTransactionService: SpeechToTransactionService,
     private val transactionExecutor: TransactionExecutor,
     private val cloudConsentStore: CloudConsentStore,
-    private val demoTalk: DemoTalk
+    private val demoTalk: DemoTalk,
+    private val onDeviceModel: OnDeviceTransactionModel,
 ) : ViewModel() {
 
     private companion object {
@@ -61,6 +64,16 @@ class RecorderViewModel @Inject constructor(
     /** The user's cloud-fallback consent: `null` = not asked yet. */
     val cloudConsent: StateFlow<Boolean?> = cloudConsentStore.granted
 
+    /** Talk 3 only: shows the on-device model's status line. */
+    val showsOnDeviceModel: Boolean = demoTalk.usesOnDeviceLlm
+    val onDeviceModelStatus: StateFlow<OnDeviceModelStatus> = onDeviceModel.status
+
+    init {
+        // Download on Wi-Fi and load the engine while the user gets ready to speak: never mid-command.
+        // prepare() returns at once; onCleared() → speechToTransactionService.release() is its pair.
+        if (showsOnDeviceModel) onDeviceModel.prepare()
+    }
+
     fun startRecording() {
         _uiState.value = VoiceRecorderUiState.Initial
         audioRecorder.start()
@@ -89,10 +102,9 @@ class RecorderViewModel @Inject constructor(
      * Human-in-the-loop step: executes the detected transaction only after the user confirms it.
      */
     fun confirmTransaction() {
-        val transaction = (_uiState.value as? VoiceRecorderUiState.Success)?.transaction ?: return
-        val route = (_uiState.value as? VoiceRecorderUiState.Success)?.route ?: return
-        val heard = (_uiState.value as? VoiceRecorderUiState.Success)?.heard ?: return
-        val latency = (_uiState.value as? VoiceRecorderUiState.Success)?.latency ?: return
+        // Route details are optional: talk 1 and CLOUD_AUDIO results have no route, transcript or latency.
+        val proposal = _uiState.value as? VoiceRecorderUiState.Success ?: return
+        val (transaction, route, heard, latency) = proposal
         _uiState.value = VoiceRecorderUiState.Executing(transaction, route, heard, latency)
         viewModelScope.launch {
             transactionExecutor.execute(transaction).fold(
@@ -141,7 +153,12 @@ class RecorderViewModel @Inject constructor(
         viewModelScope.launch {
             val result = runCatching {
                 speechToTransactionService.parse(audio) { progress ->
-                    _uiState.value = VoiceRecorderUiState.DownloadingModel(progress)
+                    // Once the one-time download is complete, the rest (loading, transcribing) is the spinner again.
+                    _uiState.value = if (progress < 1f) {
+                        VoiceRecorderUiState.DownloadingModel(progress)
+                    } else {
+                        VoiceRecorderUiState.Loading
+                    }
                 }
             }
 

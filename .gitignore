@@ -44,3 +44,8 @@ google-services.json
 
 *.m4a
 *.wav
+
+# On-device models, fine-tuning data and checkpoints: never committed (see ml/functiongemma/README.md)
+*.litertlm
+ml/**/*.jsonl
+ml/**/checkpoints/
